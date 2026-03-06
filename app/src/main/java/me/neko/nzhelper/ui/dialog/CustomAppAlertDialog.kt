@@ -30,8 +30,8 @@ fun CustomAppAlertDialog(
     confirmIcon: ImageVector,
     dismissText: String,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit = { onDismissRequest() },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit = { onDismissRequest() }
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
