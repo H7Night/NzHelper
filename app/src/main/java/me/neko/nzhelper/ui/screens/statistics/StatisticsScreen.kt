@@ -1,7 +1,6 @@
 package me.neko.nzhelper.ui.screens.statistics
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -26,13 +26,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -78,7 +80,6 @@ fun StatisticsScreen() {
 
     val currentTime = LocalDateTime.now()
 
-    // 使用统一的计算函数获取各周期数据，避免重复逻辑
     val weekData by remember(sessions, currentTime) {
         derivedStateOf { calculatePeriodData(sessions, currentTime, PeriodType.WEEK) }
     }
@@ -105,25 +106,13 @@ fun StatisticsScreen() {
                     totalSeconds = totalSeconds,
                     avgMinutes = avgMinutes,
                     weekCount = sessions.count {
-                        isWithinPeriod(
-                            it.timestamp,
-                            currentTime,
-                            PeriodType.WEEK
-                        )
+                        isWithinPeriod(it.timestamp, currentTime, PeriodType.WEEK)
                     },
                     monthCount = sessions.count {
-                        isWithinPeriod(
-                            it.timestamp,
-                            currentTime,
-                            PeriodType.MONTH
-                        )
+                        isWithinPeriod(it.timestamp, currentTime, PeriodType.MONTH)
                     },
                     yearCount = sessions.count {
-                        isWithinPeriod(
-                            it.timestamp,
-                            currentTime,
-                            PeriodType.YEAR
-                        )
+                        isWithinPeriod(it.timestamp, currentTime, PeriodType.YEAR)
                     }
                 )
             }
@@ -141,7 +130,11 @@ fun StatisticsScreen() {
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text("统计") },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -178,24 +171,26 @@ fun StatisticsScreen() {
                     }
 
                     item {
-                        PeriodSection(
-                            title = "本周",
-                            data = weekData
-                        )
-                    }
-
-                    item {
-                        PeriodSection(
-                            title = "本月",
-                            data = monthData
-                        )
-                    }
-
-                    item {
-                        PeriodSection(
-                            title = "今年",
-                            data = yearData
-                        )
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                PeriodSection(title = "本周", data = weekData)
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                PeriodSection(title = "本月", data = monthData)
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 16.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                PeriodSection(title = "今年", data = yearData)
+                            }
+                        }
                     }
 
                     item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -303,7 +298,6 @@ private fun calculateMonthlyChartData(
 ): List<Pair<String, Float>> {
     val firstDay = now.withDayOfMonth(1).toLocalDate()
 
-    // 为了图表好看，只生成有数据的点
     return sessions
         .filter { it.timestamp.toLocalDate() >= firstDay }
         .groupBy { it.timestamp.toLocalDate() }
@@ -390,7 +384,6 @@ private fun getRandomComment(days: Int): String {
     }
 }
 
-
 // --- UI 组件 ---
 @Composable
 private fun PeriodSection(
@@ -398,54 +391,52 @@ private fun PeriodSection(
     data: PeriodData
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // 数据概览
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    formatDuration(data.totalDurationSeconds),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    "总时长",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    if (data.totalDurationSeconds > 0) "%.1f分".format(data.avgDurationMinutes) else "0分",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = if (data.totalDurationSeconds > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "平均每次",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        formatDuration(data.totalDurationSeconds),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "总时长",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        if (data.totalDurationSeconds > 0) "%.1f分".format(data.avgDurationMinutes) else "0分",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = if (data.totalDurationSeconds > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "平均",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
+        Spacer(Modifier.height(24.dp))
+
         // 图表
         BarChart(data = data.chartData)
-
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 32.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
     }
 }
 
@@ -481,9 +472,10 @@ private fun TotalStatCard(
 ) {
     val statusText = buildTotalStatStatus(sessions)
 
-    ElevatedCard(
+    Card(
         modifier = modifier,
-        colors = CardDefaults.elevatedCardColors(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
     ) {
@@ -493,7 +485,8 @@ private fun TotalStatCard(
         ) {
             Text(
                 text = "总体统计",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -503,22 +496,18 @@ private fun TotalStatCard(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val avgText =
-                    if (stats.totalCount > 0) "%.1f 分钟".format(stats.avgMinutes) else "0 分钟"
-                Text(
-                    text = "平均每次 $avgText · 共 ${stats.totalCount} 次",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            val avgText =
+                if (stats.totalCount > 0) "%.1f 分钟".format(stats.avgMinutes) else "0 分钟"
+            Text(
+                text = "平均每次 $avgText · 共 ${stats.totalCount} 次",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             if (statusText.isNotEmpty()) {
                 Text(
                     text = statusText,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -527,27 +516,33 @@ private fun TotalStatCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp),
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatChip("本周", stats.weekCount)
-                StatChip("本月", stats.monthCount)
-                StatChip("今年", stats.yearCount)
+                StatPill("本周", stats.weekCount)
+                StatPill("本月", stats.monthCount)
+                StatPill("今年", stats.yearCount)
             }
         }
     }
 }
 
 @Composable
-private fun StatChip(label: String, value: Int) {
-    AssistChip(
-        onClick = {},
-        label = { Text("$label $value", style = MaterialTheme.typography.labelSmall) },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+private fun StatPill(label: String, value: Int) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "$label $value",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
         )
-    )
+    }
 }
 
 @Composable
@@ -555,9 +550,10 @@ private fun LatestSessionCard(
     latestInfo: LatestSessionInfo?,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
+    Card(
         modifier = modifier,
-        colors = CardDefaults.elevatedCardColors(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
             containerColor = if (latestInfo?.isErrorState == true)
                 MaterialTheme.colorScheme.errorContainer
             else MaterialTheme.colorScheme.primaryContainer
@@ -573,52 +569,76 @@ private fun LatestSessionCard(
                 Text(
                     "还没有开始记录哦～",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (isSystemInDarkTheme())
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    else
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
             }
         } else {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
+                                alpha = 0.2f
+                            )
+                            else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Text(
-                            text = "最近一次",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = latestInfo.displayDate,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${latestInfo.time} · 坚持了 ${latestInfo.durationText}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Outlined.Schedule,
+                        contentDescription = null,
+                        tint = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                )
+                Spacer(Modifier.width(16.dp))
 
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "最近一次 · ${latestInfo.displayDate}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "${latestInfo.time} · 坚持了 ${latestInfo.durationText}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
+                            alpha = 0.8f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
+                            alpha = 0.1f
+                        )
+                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
+                    )
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
                     text = latestInfo.detailText,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = if (latestInfo.isErrorState)
-                        MaterialTheme.colorScheme.onErrorContainer
-                    else
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                    fontWeight = FontWeight.Medium,
+                    color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -630,14 +650,14 @@ private fun LatestSessionCard(
 private fun BarChart(
     data: List<Pair<String, Float>>,
     modifier: Modifier = Modifier,
-    chartHeight: Dp = 240.dp,
+    chartHeight: Dp = 160.dp,
     minBarWidth: Dp = 16.dp,
-    maxBarWidth: Dp = 54.dp,
-    spacing: Dp = 16.dp
+    maxBarWidth: Dp = 40.dp,
+    spacing: Dp = 12.dp
 ) {
     if (data.isEmpty()) {
         Box(
-            modifier = modifier.height(300.dp),
+            modifier = modifier.height(160.dp),
             contentAlignment = Alignment.Center
         ) {
             Text("无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -646,14 +666,12 @@ private fun BarChart(
     }
 
     val maxValue = data.maxOf { it.second }.coerceAtLeast(1f)
-    val barColor = MaterialTheme.colorScheme.primary
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(chartHeight + 60.dp) // 给 X 轴留空间
+            .height(chartHeight + 40.dp) // 给 X 轴留空间
     ) {
-
         YAxis(
             maxValue = maxValue,
             modifier = Modifier
@@ -677,7 +695,7 @@ private fun BarChart(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-                contentPadding = PaddingValues(horizontal = 12.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(spacing)
             ) {
                 items(data) { (date, value) ->
@@ -686,8 +704,7 @@ private fun BarChart(
                         maxValue = maxValue,
                         date = date,
                         barWidth = barWidth,
-                        chartHeight = chartHeight,
-                        color = barColor
+                        chartHeight = chartHeight
                     )
                 }
             }
@@ -703,24 +720,24 @@ private fun YAxis(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .padding(bottom = 40.dp),
+            .padding(bottom = 28.dp, end = 8.dp), // 底部留给 X 轴
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.End
     ) {
         Text(
-            "${maxValue.toInt()} 分钟",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            "${(maxValue / 2).toInt()} 分钟",
-            style = MaterialTheme.typography.bodySmall,
+            "${maxValue.toInt()}m", // 缩写单位
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
         Text(
-            "0",
-            style = MaterialTheme.typography.bodySmall,
+            "${(maxValue / 2).toInt()}m",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        )
+        Text(
+            "0",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
         )
     }
 }
@@ -731,59 +748,59 @@ private fun BarItem(
     maxValue: Float,
     date: String,
     barWidth: Dp,
-    chartHeight: Dp,
-    color: Color
+    chartHeight: Dp
 ) {
     val ratio = value / maxValue
     val barHeight = chartHeight * ratio
+
+    val barColor = MaterialTheme.colorScheme.primary
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(barColor, barColor.copy(alpha = 0.6f))
+    )
 
     Column(
         modifier = Modifier.width(barWidth),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
-        // 绘图区域：Box 占位整个高度，柱子在底部对齐
         Box(
             modifier = Modifier
                 .height(chartHeight)
                 .fillMaxWidth()
         ) {
-
-            // 柱体
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .height(barHeight)
+                    .height(if (barHeight > 0.dp) barHeight else 0.dp) // 防止负值
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(color)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .background(gradientBrush)
             )
 
-            // 数值显示逻辑：柱子太短时显示在上方，够长时显示在内部
-            val showInside = barHeight > 48.dp
+            // 数值显示逻辑：柱子太短时显示在上方
+            val showInside = barHeight > 36.dp
 
-            Text(
-                text = value.toInt().toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (showInside) Color.White else Color.Black,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(
-                        y = if (showInside)
-                            -barHeight / 2 // 居中于柱体内部
-                        else
-                            -barHeight - 8.dp // 悬浮于柱体上方
-                    )
-            )
+            if (value > 0f) {
+                Text(
+                    text = value.toInt().toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (showInside) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(
+                            y = if (showInside) -barHeight / 2 else -barHeight - 8.dp
+                        )
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))
 
-        // 日期（X 轴）
+        // 日期（X 轴）- 颜色减淡
         Text(
             text = date,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
     }
 }
