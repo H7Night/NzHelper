@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -28,12 +27,12 @@ fun getGitShortHash(): String {
 
 android {
     namespace = "me.neko.nzhelper"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "me.neko.nzhelper"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
 
         val commitCount = getGitCommitCount()
         val gitHash = getGitShortHash()
@@ -47,7 +46,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            isShrinkResources = true // 移除无用资源
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,27 +57,19 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        }
-    }
     buildFeatures {
         compose = true
         buildConfig = true
     }
 
-    // 构建时的包名
-    android.applicationVariants.all {
-        outputs.all {
-            if (this is com.android.build.gradle.internal.api.ApkVariantOutputImpl) {
-                val config = project.android.defaultConfig
-                val versionName = config.versionName
-                this.outputFileName = "NzHelper_v${versionName}.apk"
-            }
-        }
-    }
+}
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(
+            org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        )
+    }
 }
 
 dependencies {
