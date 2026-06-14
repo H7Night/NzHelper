@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,7 +58,7 @@ fun DetailsDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
             modifier = Modifier
@@ -92,10 +92,10 @@ fun DetailsDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = formState.watchedMovie,
                         onClick = { onFormStateChange(formState.copy(watchedMovie = !formState.watchedMovie)) },
-                        label = { Text("看小电影了") },
+                        label = { Text("小电影") },
                         leadingIcon = if (formState.watchedMovie) {
                             {
                                 Icon(
@@ -107,10 +107,10 @@ fun DetailsDialog(
                         } else null,
                         modifier = Modifier.weight(1f)
                     )
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = formState.climax,
                         onClick = { onFormStateChange(formState.copy(climax = !formState.climax)) },
-                        label = { Text("发射了") },
+                        label = { Text("高潮") },
                         leadingIcon = if (formState.climax) {
                             {
                                 Icon(
@@ -141,7 +141,7 @@ fun DetailsDialog(
                 // 心情选择
                 SelectionSection(
                     title = "心情",
-                    items = listOf("平静", "愉悦", "兴奋", "疲惫", "最后一次"),
+                    items = listOf("平静", "愉悦", "兴奋", "疲惫"),
                     selected = formState.mood,
                     onSelected = { onFormStateChange(formState.copy(mood = it)) }
                 )
@@ -167,14 +167,14 @@ fun DetailsDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Text("取消")
                     }
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp)
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Text("保存记录")
                     }

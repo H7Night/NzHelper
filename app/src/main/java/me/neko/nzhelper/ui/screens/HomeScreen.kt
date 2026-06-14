@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,23 +23,26 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -59,6 +63,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -114,25 +119,16 @@ fun HomeScreen() {
         onDispose { context.unbindService(connection) }
     }
 
-    // 订阅 Service 状态
-    val elapsedSeconds by timerService
-        ?.elapsedSec
-        ?.collectAsState(initial = 0)
+    val elapsedSeconds by timerService?.elapsedSec?.collectAsState(initial = 0)
         ?: remember { mutableIntStateOf(0) }
-
-    val isServiceRunning by timerService
-        ?.isRunning
-        ?.collectAsState(initial = false)
+    val isServiceRunning by timerService?.isRunning?.collectAsState(initial = false)
         ?: remember { mutableStateOf(false) }
 
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
-
     var formState by remember { mutableStateOf(SessionFormState()) }
-
     val sessions = remember { mutableStateListOf<Session>() }
 
-    // 加载历史
     LaunchedEffect(Unit) {
         val loaded = SessionRepository.loadSessions(context)
         sessions.clear()
@@ -143,7 +139,11 @@ fun HomeScreen() {
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(text = "牛子小助手") },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.safeDrawing.only(
@@ -186,11 +186,31 @@ fun HomeScreen() {
                         Text(
                             text = "近期记录",
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
                         )
                     }
-                    items(sessions.reversed()) { session ->
-                        SessionItem(session = session)
+
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            sessions.reversed().forEachIndexed { index, session ->
+                                SessionItem(session = session)
+                                if (index < sessions.size - 1) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 72.dp),
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -226,9 +246,7 @@ fun HomeScreen() {
                         props = formState.props
                     )
                     sessions.add(session)
-                    scope.launch {
-                        SessionRepository.saveSessions(context, sessions)
-                    }
+                    scope.launch { SessionRepository.saveSessions(context, sessions) }
 
                     formState = SessionFormState()
                     showDetailsDialog = false
@@ -250,6 +268,8 @@ private fun ConfirmStopDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         icon = {
             Icon(
                 Icons.Outlined.PauseCircleOutline,
@@ -257,20 +277,26 @@ private fun ConfirmStopDialog(
                 tint = MaterialTheme.colorScheme.primary
             )
         },
-        title = { Text("结束了吗？") },
+        title = {
+            Text(
+                "结束了吗？",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
         text = { Text("要结束本次记录并填写详情吗？", textAlign = TextAlign.Center) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) { Text("结束记录") }
+                shape = RoundedCornerShape(16.dp)
+            ) { Text("结束记录", fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp)
             ) { Text("继续") }
         }
     )
@@ -287,9 +313,10 @@ private fun TimerCard(
     onStop: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ElevatedCard(
-        modifier = modifier.fillMaxSize(),
-        colors = CardDefaults.elevatedCardColors(
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
     ) {
@@ -298,52 +325,64 @@ private fun TimerCard(
             contentAlignment = Alignment.Center
         ) {
             Column(
-                modifier = Modifier.padding(32.dp),
+                modifier = Modifier.padding(vertical = 32.dp, horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(32.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
                     text = "记录新的手艺活",
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Text(
                     text = formatTime(elapsedSeconds),
                     style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 播放/暂停 FAB
-                    FloatingActionButton(
+                    FilledTonalButton(
                         onClick = onToggleRun,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(72.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(width = 140.dp, height = 64.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     ) {
                         Icon(
                             imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = if (isRunning) "暂停" else "开始",
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (isRunning) "暂停" else "开始",
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
                     // 停止 FAB
-                    FloatingActionButton(
+                    FilledIconButton(
                         onClick = onStop,
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(64.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(64.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Stop,
                             contentDescription = "结束",
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -358,44 +397,39 @@ private fun TimerCard(
 @SuppressLint("DefaultLocale")
 @Composable
 private fun SessionItem(session: Session) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "${session.timestamp.monthValue}月${session.timestamp.dayOfMonth}日 ${session.timestamp.hour}:${
-                        String.format(
-                            "%02d",
-                            session.timestamp.minute
-                        )
-                    }",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(22.dp)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = formatTime(session.duration),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "${session.timestamp.monthValue}月${session.timestamp.dayOfMonth}日 ${
+                        session.timestamp.hour
+                    }:${String.format("%02d", session.timestamp.minute)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
                 if (session.remark.isNotEmpty()) {
                     Text(
                         text = session.remark,
@@ -406,20 +440,22 @@ private fun SessionItem(session: Session) {
                     )
                 }
             }
+        }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = session.rating.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatTime(session.duration),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

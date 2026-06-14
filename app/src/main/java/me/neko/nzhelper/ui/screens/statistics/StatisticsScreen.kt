@@ -452,11 +452,12 @@ private fun EmptyStateView() {
         ) {
             Text(
                 text = "(。・ω・。)",
-                style = MaterialTheme.typography.displayMedium
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "暂无统计数据\n快去完成第一次记录吧！",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
@@ -550,96 +551,106 @@ private fun LatestSessionCard(
     latestInfo: LatestSessionInfo?,
     modifier: Modifier = Modifier
 ) {
+    val isError = latestInfo?.isErrorState == true
+
+    val gradientBrush = Brush.verticalGradient(
+        colors = if (isError) {
+            listOf(
+                MaterialTheme.colorScheme.error,
+                MaterialTheme.colorScheme.error.copy(alpha = 0.75f)
+            )
+        } else {
+            listOf(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
+            )
+        }
+    )
+
+    val contentColor =
+        if (isError) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
+    val contentColorVariant = contentColor.copy(alpha = 0.8f)
+
+    val overlayColor = contentColor.copy(alpha = 0.15f)
+
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (latestInfo?.isErrorState == true)
-                MaterialTheme.colorScheme.errorContainer
-            else MaterialTheme.colorScheme.primaryContainer
+            containerColor = Color.Transparent
         )
     ) {
-        if (latestInfo == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "还没有开始记录哦～",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Box(
+            modifier = Modifier
+                .background(gradientBrush)
+                .fillMaxWidth()
+        ) {
+            if (latestInfo == null) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
-                                alpha = 0.2f
-                            )
-                            else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
-                        ),
+                        .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Schedule,
-                        contentDescription = null,
-                        tint = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
-                        else MaterialTheme.colorScheme.onPrimaryContainer
+                    Text(
+                        "还没有开始记录哦～",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = contentColorVariant
                     )
                 }
+            } else {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(overlayColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Schedule,
+                                contentDescription = null,
+                                tint = contentColor
+                            )
+                        }
 
-                Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(16.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "最近一次 · ${latestInfo.displayDate}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
-                        else MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "${latestInfo.time} · 坚持了 ${latestInfo.durationText}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
-                            alpha = 0.8f
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "最近一次 · ${latestInfo.displayDate}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = contentColor
+                            )
+                            Text(
+                                text = "${latestInfo.time} · 坚持了 ${latestInfo.durationText}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = contentColorVariant
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(overlayColor)
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = latestInfo.detailText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Medium,
+                            color = contentColor
                         )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
+                    }
                 }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer.copy(
-                            alpha = 0.1f
-                        )
-                        else MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
-                    )
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = latestInfo.detailText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Medium,
-                    color = if (latestInfo.isErrorState) MaterialTheme.colorScheme.onErrorContainer
-                    else MaterialTheme.colorScheme.onPrimaryContainer
-                )
             }
         }
     }

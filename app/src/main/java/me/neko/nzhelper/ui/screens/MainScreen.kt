@@ -12,9 +12,10 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,16 +44,19 @@ import me.neko.nzhelper.ui.util.UpdateChecker
 fun BottomNavigationBar(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    NavigationBar {
+
+    ShortNavigationBar(
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         BottomNavItem.items.forEach { item ->
-            NavigationBarItem(
+            ShortNavigationBarItem(
                 icon = {
                     Icon(
                         painter = item.icon(),
                         contentDescription = item.title
                     )
                 },
-                label = { Text(text = item.title) },
+                label = { Text(item.title) },
                 selected = currentRoute == item.route,
                 onClick = {
                     navController.navigate(item.route) {
