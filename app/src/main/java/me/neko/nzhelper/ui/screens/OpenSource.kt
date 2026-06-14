@@ -1,32 +1,47 @@
 package me.neko.nzhelper.ui.screens
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
@@ -57,7 +72,11 @@ fun OpenSourceScreen(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing
@@ -67,12 +86,30 @@ fun OpenSourceScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            items(licenseList) { item ->
-                LicenseItemView(item) {
-                    val intent = Intent(Intent.ACTION_VIEW, item.url.toUri())
-                    context.startActivity(intent)
+            item {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                ) {
+                    Column {
+                        licenseList.forEachIndexed { index, item ->
+                            LicenseItemView(item) {
+                                val intent = Intent(Intent.ACTION_VIEW, item.url.toUri())
+                                context.startActivity(intent)
+                            }
+                            if (index < licenseList.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 72.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -88,13 +125,31 @@ fun LicenseItemView(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center
         ) {
-            Text(text = "${item.name} - ${item.author}", style = MaterialTheme.typography.bodyLarge)
+            Icon(
+                imageVector = Icons.Outlined.Code,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${item.name} - ${item.author}",
+                style = MaterialTheme.typography.bodyLarge
+            )
             Text(
                 text = item.url,
                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -102,10 +157,30 @@ fun LicenseItemView(
                     textDecoration = TextDecoration.Underline
                 )
             )
-            Text(text = getLicense(item.type), style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(Modifier.height(6.dp))
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = getLicenseShort(item.type),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
     }
 }
+
+private fun getLicenseShort(type: LicenseType): String =
+    when (type) {
+        LicenseType.Apache2 -> "Apache 2.0"
+        LicenseType.MIT -> "MIT"
+        LicenseType.GPL3 -> "GPL 3.0"
+    }
 
 private val licenseList = listOf(
     LicenseItem(
@@ -236,13 +311,6 @@ enum class LicenseType {
     MIT,
     GPL3
 }
-
-private fun getLicense(type: LicenseType): String =
-    when (type) {
-        LicenseType.Apache2 -> "Apache Software License 2.0"
-        LicenseType.MIT -> "MIT License"
-        LicenseType.GPL3 -> "GNU general public license Version 3"
-    }
 
 @Preview(showBackground = true)
 @Composable

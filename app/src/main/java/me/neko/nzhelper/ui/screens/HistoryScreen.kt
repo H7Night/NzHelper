@@ -1,10 +1,5 @@
 package me.neko.nzhelper.ui.screens
 
-import android.content.Context
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,11 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -42,8 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -77,20 +66,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.google.gson.Gson
-import com.google.gson.JsonParser.parseString
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import me.neko.nzhelper.NzApplication
 import me.neko.nzhelper.data.Session
 import me.neko.nzhelper.data.SessionFormState
 import me.neko.nzhelper.data.SessionRepository
 import me.neko.nzhelper.ui.dialog.DetailsDialog
 import me.neko.nzhelper.ui.dialog.formatTime
-import java.io.OutputStreamWriter
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -103,11 +84,7 @@ fun HistoryScreen() {
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     val sessions = remember { mutableStateListOf<Session>() }
-    val gson = NzApplication.gson
-    val listType = object : TypeToken<List<Session>>() {}.type
 
-    var showMenu by remember { mutableStateOf(false) }
-    var showClearDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var sessionToDelete by remember { mutableStateOf<Session?>(null) }
 
@@ -125,99 +102,10 @@ fun HistoryScreen() {
         sessions.addAll(loaded)
     }
 
-    val importLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            uri?.let {
-                scope.launch {
-                    val imported = parseImportFile(context, it, gson, listType)
-                    if (imported.isNotEmpty()) {
-                        sessions.clear()
-                        sessions.addAll(imported)
-                        SessionRepository.saveSessions(context, sessions)
-                        Toast.makeText(
-                            context,
-                            "成功导入 ${imported.size} 条记录",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        Toast.makeText(context, "导入失败：文件格式不正确或为空", Toast.LENGTH_SHORT)
-                            .show()
-                    }
-                }
-            }
-        }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                try {
-                    context.contentResolver.openOutputStream(it)?.use { os ->
-                        OutputStreamWriter(os).use { writer -> writer.write(gson.toJson(sessions)) }
-                    }
-                    Toast.makeText(context, "导出成功", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text("历史记录") },
-                actions = {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("导出数据") },
-                            onClick = {
-                                showMenu = false
-                                exportLauncher.launch("NzHelper_Export_${System.currentTimeMillis()}.json")
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null
-                                )
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("导入数据") },
-                            onClick = {
-                                showMenu = false
-                                importLauncher.launch(arrayOf("application/json", "text/plain"))
-                            },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "清除全部记录",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                showClearDialog = true
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        )
-                    }
-                },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -288,21 +176,6 @@ fun HistoryScreen() {
                 }
             }
         }
-    }
-
-    if (showClearDialog) {
-        ConfirmDialog(
-            icon = Icons.Default.Warning,
-            title = "清除全部记录",
-            message = "此操作不可撤销，确定要删除所有记录吗？",
-            confirmText = "全部删除",
-            onConfirm = {
-                sessions.clear()
-                scope.launch { SessionRepository.saveSessions(context, sessions) }
-                showClearDialog = false
-            },
-            onDismiss = { showClearDialog = false }
-        )
     }
 
     if (isViewingDetails && selectedSession != null) {
@@ -590,7 +463,7 @@ private fun DetailRow(label: String, value: String, showDivider: Boolean) {
 }
 
 @Composable
-private fun ConfirmDialog(
+fun ConfirmDialog(
     icon: ImageVector,
     title: String,
     message: String,
@@ -621,72 +494,6 @@ private fun ConfirmDialog(
             ) { Text("取消") }
         }
     )
-}
-
-// 导入逻辑封装
-private suspend fun parseImportFile(
-    context: Context,
-    uri: Uri,
-    gson: Gson,
-    listType: java.lang.reflect.Type
-): List<Session> = withContext(Dispatchers.IO) {
-    val result = mutableListOf<Session>()
-    try {
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
-            val jsonStr = inputStream.bufferedReader().readText()
-            try {
-                val list: List<Session> = gson.fromJson(jsonStr, listType)
-                result.addAll(list)
-                return@withContext result
-            } catch (_: Exception) {
-                try {
-                    val root = parseString(jsonStr).asJsonArray
-                    for (elem in root) {
-                        if (elem.isJsonArray) {
-                            val arr = elem.asJsonArray
-                            val timeStr = arr[0].asString
-                            val timestamp =
-                                LocalDateTime.parse(timeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                            val duration = if (arr.size() > 1) arr[1].asInt else 0
-                            val remark =
-                                if (arr.size() > 2 && !arr[2].isJsonNull) arr[2].asString else ""
-                            val location =
-                                if (arr.size() > 3 && !arr[3].isJsonNull) arr[3].asString else ""
-                            val watchedMovie = if (arr.size() > 4) arr[4].asBoolean else false
-                            val climax = if (arr.size() > 5) arr[5].asBoolean else false
-                            val rating =
-                                if (arr.size() > 6 && !arr[6].isJsonNull) arr[6].asFloat.coerceIn(
-                                    0f,
-                                    5f
-                                ) else 3f
-                            val mood =
-                                if (arr.size() > 7 && !arr[7].isJsonNull) arr[7].asString else "平静"
-                            val props =
-                                if (arr.size() > 8 && !arr[8].isJsonNull) arr[8].asString else "手"
-                            result.add(
-                                Session(
-                                    timestamp = timestamp,
-                                    duration = duration,
-                                    remark = remark,
-                                    location = location,
-                                    watchedMovie = watchedMovie,
-                                    climax = climax,
-                                    rating = rating,
-                                    mood = mood,
-                                    props = props
-                                )
-                            )
-                        }
-                    }
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    result
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
