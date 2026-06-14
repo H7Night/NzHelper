@@ -37,6 +37,11 @@ import androidx.navigation.compose.rememberNavController
 import me.neko.nzhelper.BuildConfig
 import me.neko.nzhelper.ui.BottomNavItem
 import me.neko.nzhelper.ui.dialog.CustomAppAlertDialog
+import me.neko.nzhelper.ui.screens.about.AboutScreen
+import me.neko.nzhelper.ui.screens.about.OpenSourceScreen
+import me.neko.nzhelper.ui.screens.history.HistoryScreen
+import me.neko.nzhelper.ui.screens.home.HomeScreen
+import me.neko.nzhelper.ui.screens.setting.SettingsScreen
 import me.neko.nzhelper.ui.screens.statistics.StatisticsScreen
 import me.neko.nzhelper.ui.util.UpdateChecker
 

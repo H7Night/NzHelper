@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens
+package me.neko.nzhelper.ui.screens.setting
 
 import android.net.Uri
 import android.widget.Toast
@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import me.neko.nzhelper.NzApplication
 import me.neko.nzhelper.data.Session
 import me.neko.nzhelper.data.SessionRepository
+import me.neko.nzhelper.ui.screens.history.ConfirmDialog
 import java.io.OutputStreamWriter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

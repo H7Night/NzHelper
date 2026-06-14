@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens
+package me.neko.nzhelper.ui.screens.home
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
@@ -132,7 +134,7 @@ fun HomeScreen() {
     LaunchedEffect(Unit) {
         val loaded = SessionRepository.loadSessions(context)
             .sortedByDescending { it.timestamp }
-        
+
         sessions.clear()
         sessions.addAll(loaded)
     }
@@ -148,8 +150,8 @@ fun HomeScreen() {
                 )
             )
         },
-        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets.safeDrawing.only(
-            androidx.compose.foundation.layout.WindowInsetsSides.Top + androidx.compose.foundation.layout.WindowInsetsSides.Horizontal
+        contentWindowInsets = WindowInsets.safeDrawing.only(
+            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
         )
     ) { innerPadding ->
         Box(

@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens
+package me.neko.nzhelper.ui.screens.about
 
 import android.content.Intent
 import androidx.compose.foundation.background

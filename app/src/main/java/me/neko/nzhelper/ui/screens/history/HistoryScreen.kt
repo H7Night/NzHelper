@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens
+package me.neko.nzhelper.ui.screens.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
