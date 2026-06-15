@@ -228,7 +228,7 @@ fun HomeScreen() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             val recentSessions = sessions.take(10)  // 只取最近 10 条
-                            recentSessions.reversed().forEachIndexed { index, session ->
+                            recentSessions.forEachIndexed { index, session ->
                                 SessionItem(session = session)
                                 if (index < recentSessions.size - 1) {
                                     HorizontalDivider(
