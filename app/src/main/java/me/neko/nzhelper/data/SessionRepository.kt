@@ -34,6 +34,20 @@ object SessionRepository {
         }
     }
 
+    /**
+     * 从指定模式/路径读取数据（不受全局设置影响，用于迁移前预读目标位置数据）
+     */
+    private fun readJsonFromTarget(mode: String, path: String, context: Context): String? {
+        return if (mode == StorageSettings.MODE_EXTERNAL) {
+            val dir = File(path)
+            val file = File(dir, EXTERNAL_FILENAME)
+            if (file.exists()) file.readText() else null
+        } else {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_SESSIONS, null)
+        }
+    }
+
     private fun writeJson(context: Context, json: String) {
         if (StorageSettings.getMode(context) == StorageSettings.MODE_EXTERNAL) {
             val dir = File(StorageSettings.getExternalPath(context))
@@ -83,7 +97,7 @@ object SessionRepository {
         }
 
     /**
-     * 切换存储模式并迁移数据
+     * 切换存储模式并合并迁移数据
      * @return true 切换成功，false 切换失败（路径不可写等）
      */
     suspend fun switchStorageMode(
@@ -101,8 +115,6 @@ object SessionRepository {
                 return@withContext true
             }
 
-            val json = readJson(context) ?: ""
-
             if (newMode == StorageSettings.MODE_EXTERNAL) {
                 val dir = File(newPath)
                 if (!dir.exists() && !dir.mkdirs()) return@withContext false
@@ -115,14 +127,29 @@ object SessionRepository {
                 }
             }
 
+            val currentJson = readJson(context) ?: ""
+            val currentSessions = if (currentJson.isNotEmpty()) {
+                parseSessionsJson(context, currentJson)
+            } else {
+                emptyList()
+            }
+
+            val targetJson = readJsonFromTarget(newMode, newPath, context) ?: ""
+            val targetSessions = if (targetJson.isNotEmpty()) {
+                parseSessionsJson(context, targetJson)
+            } else {
+                emptyList()
+            }
+
+            val mergedSessions = (currentSessions + targetSessions)
+                .distinctBy { it.timestamp }
+
             StorageSettings.setMode(context, newMode)
             if (newMode == StorageSettings.MODE_EXTERNAL) {
                 StorageSettings.setExternalPath(context, newPath)
             }
 
-            if (json.isNotEmpty()) {
-                writeJson(context, json)
-            }
+            saveSessions(context, mergedSessions)
 
             true
         } catch (e: Exception) {

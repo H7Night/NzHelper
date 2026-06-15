@@ -131,7 +131,8 @@ fun SettingsScreen(
                         val loaded = SessionRepository.loadSessions(context)
                         sessions.clear()
                         sessions.addAll(loaded)
-                        Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "存储位置已切换，记录已合并去重", Toast.LENGTH_SHORT)
+                            .show()
                     } else {
                         Toast.makeText(context, "切换失败，请检查路径是否可写", Toast.LENGTH_SHORT)
                             .show()
@@ -156,7 +157,11 @@ fun SettingsScreen(
                                 val loaded = SessionRepository.loadSessions(context)
                                 sessions.clear()
                                 sessions.addAll(loaded)
-                                Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "存储位置已切换，记录已合并去重",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
                                 Toast.makeText(
                                     context,
@@ -254,7 +259,8 @@ fun SettingsScreen(
                     val loaded = SessionRepository.loadSessions(context)
                     sessions.clear()
                     sessions.addAll(loaded)
-                    Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "存储位置已切换，记录已合并去重", Toast.LENGTH_SHORT)
+                        .show()
                 } else {
                     Toast.makeText(context, "切换失败，请检查路径是否可写", Toast.LENGTH_SHORT)
                         .show()
