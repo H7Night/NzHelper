@@ -29,9 +29,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.PauseCircleOutline
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -133,6 +135,7 @@ fun HomeScreen() {
 
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
     var formState by remember { mutableStateOf(SessionFormState()) }
     val sessions = remember { mutableStateListOf<Session>() }
 
@@ -192,6 +195,13 @@ fun HomeScreen() {
                         onStop = {
                             if (elapsedSeconds > 0) showConfirmDialog = true
                             else Toast.makeText(context, "计时尚未开始", Toast.LENGTH_SHORT).show()
+                        },
+                        onReset = {
+                            if (elapsedSeconds > 0) {
+                                showResetConfirmDialog = true
+                            } else {
+                                Toast.makeText(context, "计时尚未开始", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                 }
@@ -239,6 +249,18 @@ fun HomeScreen() {
                         showDetailsDialog = true
                         context.startService(serviceIntent.apply {
                             action = TimerService.ACTION_PAUSE
+                        })
+                    }
+                )
+            }
+
+            if (showResetConfirmDialog) {
+                ConfirmResetDialog(
+                    onDismiss = { showResetConfirmDialog = false },
+                    onConfirm = {
+                        showResetConfirmDialog = false
+                        context.startService(serviceIntent.apply {
+                            action = TimerService.ACTION_RESET
                         })
                     }
                 )
@@ -318,6 +340,53 @@ private fun ConfirmStopDialog(
     )
 }
 
+@Composable
+private fun ConfirmResetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        icon = {
+            Icon(
+                Icons.Outlined.Replay,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+        },
+        title = {
+            Text(
+                "确定要重置吗？",
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Text("重置将清零当前时间，且无法恢复。", textAlign = TextAlign.Center)
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                )
+            ) { Text("确认重置", fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) { Text("继续计时") }
+        }
+    )
+}
+
 /**
  * 计时器卡片 UI 组件
  */
@@ -327,6 +396,7 @@ private fun TimerCard(
     isRunning: Boolean,
     onToggleRun: () -> Unit,
     onStop: () -> Unit,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -363,11 +433,26 @@ private fun TimerCard(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 播放/暂停 FAB
+                    FilledIconButton(
+                        onClick = onReset,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(64.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Replay,
+                            contentDescription = "重置",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
                     FilledTonalButton(
                         onClick = onToggleRun,
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.size(width = 140.dp, height = 64.dp),
+                        modifier = Modifier.size(width = 124.dp, height = 64.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -385,7 +470,6 @@ private fun TimerCard(
                         )
                     }
 
-                    // 停止 FAB
                     FilledIconButton(
                         onClick = onStop,
                         shape = RoundedCornerShape(16.dp),

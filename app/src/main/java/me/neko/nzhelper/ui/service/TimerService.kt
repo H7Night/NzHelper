@@ -61,6 +61,7 @@ class TimerService : Service() {
             ACTION_START -> startTimer()
             ACTION_PAUSE -> pauseTimer()
             ACTION_STOP -> stopTimer()
+            ACTION_RESET -> resetTimer()
         }
         return START_STICKY
     }
@@ -99,6 +100,17 @@ class TimerService : Service() {
         _isRunning.value = false
     }
 
+    @Suppress("DEPRECATION")
+    private fun resetTimer() {
+        handler.removeCallbacks(tickRunnable)
+        stopForeground(true)
+        stopSelf()
+        accumulatedSec = 0
+        startTimeMs = 0L
+        _elapsedSec.value = 0
+        _isRunning.value = false
+    }
+
     private fun buildNotification(elapsed: Int): Notification {
         return NotificationCompat.Builder(this, NotificationUtil.CHANNEL_ID)
             .setContentTitle(if (_isRunning.value) "计时进行中" else "计时已暂停")
@@ -124,6 +136,7 @@ class TimerService : Service() {
         const val ACTION_START = "me.neko.nzhelper.ACTION_START"
         const val ACTION_PAUSE = "me.neko.nzhelper.ACTION_PAUSE"
         const val ACTION_STOP = "me.neko.nzhelper.ACTION_STOP"
+        const val ACTION_RESET = "me.neko.nzhelper.ACTION_RESET"
         const val NOTIF_ID = 1001
     }
 
