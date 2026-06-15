@@ -184,18 +184,22 @@ fun SettingsScreen(
     // 导入 Launcher
     val importLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            uri?.let {
+            uri?.let { it ->
                 scope.launch {
                     val imported = SessionRepository.parseImportFile(context, it, gson, listType)
                     if (imported.isNotEmpty()) {
-                        sessions.clear()
-                        sessions.addAll(imported)
+                        val existingTimestamps = sessions.map { it.timestamp }.toSet()
+                        val newSessions = imported.filter { it.timestamp !in existingTimestamps }
+                        sessions.addAll(newSessions)
                         SessionRepository.saveSessions(context, sessions)
-                        Toast.makeText(
-                            context,
-                            "成功导入 ${imported.size} 条记录",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        val mergedCount = newSessions.size
+                        val skippedCount = imported.size - mergedCount
+                        val msg = if (skippedCount > 0) {
+                            "成功导入 $mergedCount 条新记录，跳过 $skippedCount 条重复记录"
+                        } else {
+                            "成功导入 $mergedCount 条记录"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, "导入失败：文件格式不正确或为空", Toast.LENGTH_SHORT)
                             .show()
