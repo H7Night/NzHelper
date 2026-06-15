@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -481,67 +484,125 @@ private fun TotalStatCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(
-                text = "总体统计",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Text(
-                text = formatDuration(stats.totalSeconds),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            val avgText =
-                if (stats.totalCount > 0) "%.1f 分钟".format(stats.avgMinutes) else "0 分钟"
-            Text(
-                text = "平均每次 $avgText · 共 ${stats.totalCount} 次",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            if (statusText.isNotEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.BarChart,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
                 Text(
-                    text = statusText,
+                    text = "总体统计",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.padding(top = 4.dp)
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = formatDuration(stats.totalSeconds),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                val avgText =
+                    if (stats.totalCount > 0) "%.1f 分钟".format(stats.avgMinutes) else "0 分钟"
+                Text(
+                    text = "平均每次 $avgText · 共 ${stats.totalCount} 次",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (statusText.isNotEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatPill("本周", stats.weekCount)
-                StatPill("本月", stats.monthCount)
-                StatPill("今年", stats.yearCount)
+                PeriodStatCard(
+                    label = "本周",
+                    count = stats.weekCount,
+                    modifier = Modifier.weight(1f)
+                )
+                PeriodStatCard(
+                    label = "本月",
+                    count = stats.monthCount,
+                    modifier = Modifier.weight(1f)
+                )
+                PeriodStatCard(
+                    label = "今年",
+                    count = stats.yearCount,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StatPill(label: String, value: Int) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+private fun PeriodStatCard(
+    label: String,
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
-            "$label $value",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            text = count.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
         )
     }
 }
