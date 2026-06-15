@@ -296,7 +296,19 @@ private val licenseList = listOf(
         "okhttp",
         "https://github.com/square/okhttp",
         LicenseType.Apache2
-    )
+    ),
+    LicenseItem(
+        "Google",
+        "Biometric",
+        "https://developer.android.com/jetpack/androidx/releases/biometric",
+        LicenseType.Apache2
+    ),
+    LicenseItem(
+        "Google",
+        "Appcompat",
+        "https://developer.android.com/jetpack/androidx/releases/appcompat",
+        LicenseType.Apache2
+    ),
 )
 
 data class LicenseItem(
