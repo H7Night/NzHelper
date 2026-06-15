@@ -9,6 +9,8 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.neko.nzhelper.NzApplication
+import me.neko.nzhelper.ui.screens.setting.StorageSettings
+import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -16,37 +18,116 @@ object SessionRepository {
 
     private const val PREFS_NAME = "sessions_prefs"
     private const val KEY_SESSIONS = "sessions"
+    private const val EXTERNAL_FILENAME = "nzHelper_data.json"
 
     private val gson = NzApplication.gson
     private val sessionsTypeToken = object : TypeToken<List<Session>>() {}.type
 
+    private fun readJson(context: Context): String? {
+        return if (StorageSettings.getMode(context) == StorageSettings.MODE_EXTERNAL) {
+            val dir = File(StorageSettings.getExternalPath(context))
+            val file = File(dir, EXTERNAL_FILENAME)
+            if (file.exists()) file.readText() else null
+        } else {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_SESSIONS, null)
+        }
+    }
+
+    private fun writeJson(context: Context, json: String) {
+        if (StorageSettings.getMode(context) == StorageSettings.MODE_EXTERNAL) {
+            val dir = File(StorageSettings.getExternalPath(context))
+            if (!dir.exists()) dir.mkdirs()
+            File(dir, EXTERNAL_FILENAME).writeText(json)
+        } else {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit { putString(KEY_SESSIONS, json) }
+        }
+    }
+
+    private fun parseSessionsJson(context: Context, json: String): List<Session> {
+        return try {
+            val root = JsonParser.parseString(json)
+            if (root.isJsonArray && root.asJsonArray.size() > 0) {
+                val firstElem = root.asJsonArray[0]
+                if (firstElem.isJsonObject) {
+                    val obj = firstElem.asJsonObject
+                    if (!obj.has("timestamp")) {
+                        val migrated = migrateObfuscatedData(root.asJsonArray)
+                        val correctedJson = gson.toJson(migrated)
+                        writeJson(context, correctedJson)
+                        return migrated
+                    }
+                }
+            }
+            gson.fromJson(json, sessionsTypeToken) ?: emptyList()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
     suspend fun loadSessions(context: Context): List<Session> = withContext(Dispatchers.IO) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val json = prefs.getString(KEY_SESSIONS, null)
+        val json = readJson(context)
         if (json.isNullOrEmpty()) {
             emptyList()
         } else {
-            try {
-                val root = JsonParser.parseString(json)
-                if (root.isJsonArray && root.asJsonArray.size() > 0) {
-                    val firstElem = root.asJsonArray[0]
-                    if (firstElem.isJsonObject) {
-                        val obj = firstElem.asJsonObject
-                        // 只要缺少 "timestamp" 字段，就认为是被混淆或损坏的旧数据
-                        if (!obj.has("timestamp")) {
-                            val migrated = migrateObfuscatedData(root.asJsonArray)
-                            // 修复后立即回写正确格式
-                            val correctedJson = gson.toJson(migrated)
-                            prefs.edit { putString(KEY_SESSIONS, correctedJson) }
-                            return@withContext migrated
-                        }
-                    }
-                }
-                gson.fromJson(json, sessionsTypeToken) ?: emptyList()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                emptyList()
+            parseSessionsJson(context, json)
+        }
+    }
+
+    suspend fun saveSessions(context: Context, sessions: List<Session>) =
+        withContext(Dispatchers.IO) {
+            val json = gson.toJson(sessions)
+            writeJson(context, json)
+        }
+
+    /**
+     * 切换存储模式并迁移数据
+     * @return true 切换成功，false 切换失败（路径不可写等）
+     */
+    suspend fun switchStorageMode(
+        context: Context,
+        newMode: String,
+        newPath: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val currentMode = StorageSettings.getMode(context)
+            val currentPath = StorageSettings.getExternalPath(context)
+
+            if (currentMode == newMode &&
+                (newMode != StorageSettings.MODE_EXTERNAL || currentPath == newPath)
+            ) {
+                return@withContext true
             }
+
+            val json = readJson(context) ?: ""
+
+            if (newMode == StorageSettings.MODE_EXTERNAL) {
+                val dir = File(newPath)
+                if (!dir.exists() && !dir.mkdirs()) return@withContext false
+                val testFile = File(dir, ".nzhelper_write_test")
+                try {
+                    testFile.writeText("test")
+                    testFile.delete()
+                } catch (_: Exception) {
+                    return@withContext false
+                }
+            }
+
+            StorageSettings.setMode(context, newMode)
+            if (newMode == StorageSettings.MODE_EXTERNAL) {
+                StorageSettings.setExternalPath(context, newPath)
+            }
+
+            if (json.isNotEmpty()) {
+                writeJson(context, json)
+            }
+
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 
@@ -59,10 +140,8 @@ object SessionRepository {
             if (!elem.isJsonObject) continue
             val obj = elem.asJsonObject
             try {
-
                 val aStr = obj.get("a")?.asString
                 if (aStr.isNullOrEmpty()) continue
-
                 val timestamp = LocalDateTime.parse(aStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
                 val duration = try {
@@ -126,13 +205,6 @@ object SessionRepository {
         return result
     }
 
-    suspend fun saveSessions(context: Context, sessions: List<Session>) =
-        withContext(Dispatchers.IO) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val json = gson.toJson(sessions)
-            prefs.edit { putString(KEY_SESSIONS, json) }
-        }
-
     /**
      * 从指定 Uri 解析导入的 JSON 文件
      */
@@ -146,13 +218,11 @@ object SessionRepository {
         try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 val jsonStr = inputStream.bufferedReader().readText()
-                // 尝试解析新格式
                 try {
                     val list: List<Session> = gson.fromJson(jsonStr, listType)
                     result.addAll(list)
                     return@withContext result
                 } catch (_: Exception) {
-                    // 新格式失败，尝试旧格式解析
                     try {
                         val root = JsonParser.parseString(jsonStr).asJsonArray
                         for (elem in root) {
@@ -160,8 +230,7 @@ object SessionRepository {
                                 val arr = elem.asJsonArray
                                 val timeStr = arr[0].asString
                                 val timestamp = LocalDateTime.parse(
-                                    timeStr,
-                                    DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                                    timeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME
                                 )
                                 val duration = if (arr.size() > 1) arr[1].asInt else 0
                                 val remark =
@@ -204,5 +273,4 @@ object SessionRepository {
         }
         result
     }
-
 }

@@ -1,7 +1,11 @@
 package me.neko.nzhelper.ui.screens.setting
 
+import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Timer
@@ -49,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -66,7 +72,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.google.gson.reflect.TypeToken
@@ -87,12 +97,14 @@ fun SettingsScreen(
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val sessions = remember { mutableStateListOf<Session>() }
     val gson = NzApplication.gson
     val listType = object : TypeToken<List<Session>>() {}.type
 
     var showClearDialog by remember { mutableStateOf(false) }
+    var showStorageDialog by remember { mutableStateOf(false) }
 
     var lockEnabled by remember { mutableStateOf(AppLockManager.isLockEnabled(context)) }
 
@@ -101,6 +113,65 @@ fun SettingsScreen(
             context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
                 .getBoolean("auto_start_timer", false)
         )
+    }
+
+    var storageMode by remember { mutableStateOf(StorageSettings.getMode(context)) }
+
+    var pendingStorageSwitch by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        pendingStorageSwitch?.let { (mode, path) ->
+            if (granted) {
+                scope.launch {
+                    val success = SessionRepository.switchStorageMode(context, mode, path)
+                    if (success) {
+                        storageMode = mode
+                        val loaded = SessionRepository.loadSessions(context)
+                        sessions.clear()
+                        sessions.addAll(loaded)
+                        Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "切换失败，请检查路径是否可写", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+            } else {
+                Toast.makeText(context, "需要存储权限才能切换到外部存储", Toast.LENGTH_SHORT).show()
+            }
+            pendingStorageSwitch = null
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                pendingStorageSwitch?.let { (mode, path) ->
+                    if (StorageSettings.hasExternalStoragePermission(context)) {
+                        scope.launch {
+                            val success = SessionRepository.switchStorageMode(context, mode, path)
+                            if (success) {
+                                storageMode = mode
+                                val loaded = SessionRepository.loadSessions(context)
+                                sessions.clear()
+                                sessions.addAll(loaded)
+                                Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "切换失败，请检查路径是否可写",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                        pendingStorageSwitch = null
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // 加载数据用于导出
@@ -146,6 +217,43 @@ fun SettingsScreen(
                     Toast.makeText(context, "导出成功", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // 执行存储切换
+    val performStorageSwitch: (String, String) -> Unit = { mode, path ->
+        if (mode == StorageSettings.MODE_EXTERNAL && !StorageSettings.hasExternalStoragePermission(
+                context
+            )
+        ) {
+            pendingStorageSwitch = mode to path
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        "package:${context.packageName}".toUri()
+                    )
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                }
+            } else {
+                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        } else {
+            scope.launch {
+                val success = SessionRepository.switchStorageMode(context, mode, path)
+                if (success) {
+                    storageMode = mode
+                    val loaded = SessionRepository.loadSessions(context)
+                    sessions.clear()
+                    sessions.addAll(loaded)
+                    Toast.makeText(context, "存储位置已切换", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "切换失败，请检查路径是否可写", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         }
@@ -208,21 +316,20 @@ fun SettingsScreen(
                             },
                             headlineContent = {
                                 Text(
-                                    text = "导出数据",
+                                    "导出数据",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
                             },
                             supportingContent = {
                                 Text(
-                                    text = "将记录导出为 JSON 文件",
+                                    "将记录导出为 JSON 文件",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             },
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -252,8 +359,7 @@ fun SettingsScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Download,
-                                        contentDescription = null,
+                                        Icons.Outlined.Download, null,
                                         tint = MaterialTheme.colorScheme.onTertiaryContainer,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -261,21 +367,20 @@ fun SettingsScreen(
                             },
                             headlineContent = {
                                 Text(
-                                    text = "导入数据",
+                                    "导入数据",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium
                                 )
                             },
                             supportingContent = {
                                 Text(
-                                    text = "从 JSON 文件恢复记录",
+                                    "从 JSON 文件恢复记录",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             },
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -302,8 +407,7 @@ fun SettingsScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.DeleteForever,
-                                        contentDescription = null,
+                                        Icons.Outlined.DeleteForever, null,
                                         tint = MaterialTheme.colorScheme.onErrorContainer,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -311,7 +415,7 @@ fun SettingsScreen(
                             },
                             headlineContent = {
                                 Text(
-                                    text = "清除全部记录",
+                                    "清除全部记录",
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.error
@@ -319,15 +423,14 @@ fun SettingsScreen(
                             },
                             supportingContent = {
                                 Text(
-                                    text = "删除所有本地历史数据",
+                                    "删除所有本地历史数据",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             },
                             trailingContent = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -335,6 +438,59 @@ fun SettingsScreen(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )
                     }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                ) {
+                    ListItem(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showStorageDialog = true },
+                        leadingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Outlined.FolderOpen,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        },
+                        headlineContent = {
+                            Text(
+                                "数据存储位置",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                if (storageMode == StorageSettings.MODE_INTERNAL) "当前：应用内部存储"
+                                else "当前：${StorageSettings.getExternalPath(context)}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
                 }
             }
 
@@ -405,8 +561,8 @@ fun SettingsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Lock,
-                                    contentDescription = null,
+                                    Icons.Outlined.Lock,
+                                    null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -414,14 +570,14 @@ fun SettingsScreen(
                         },
                         headlineContent = {
                             Text(
-                                text = "应用锁",
+                                "应用锁",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                         },
                         supportingContent = {
                             Text(
-                                text = "使用生物识别或锁屏密码解锁",
+                                "使用生物识别或锁屏密码解锁",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -463,8 +619,8 @@ fun SettingsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Timer,
-                                    contentDescription = null,
+                                    Icons.Outlined.Timer,
+                                    null,
                                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -472,14 +628,14 @@ fun SettingsScreen(
                         },
                         headlineContent = {
                             Text(
-                                text = "自动计时",
+                                "自动计时",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                         },
                         supportingContent = {
                             Text(
-                                text = "进入首页时自动开始计时",
+                                "进入首页时自动开始计时",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         },
@@ -513,8 +669,8 @@ fun SettingsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Info,
-                                    contentDescription = null,
+                                    Icons.Outlined.Info,
+                                    null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -522,15 +678,15 @@ fun SettingsScreen(
                         },
                         headlineContent = {
                             Text(
-                                text = "关于",
+                                "关于",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                             )
                         },
                         trailingContent = {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.size(20.dp)
                             )
@@ -554,6 +710,18 @@ fun SettingsScreen(
                 showClearDialog = false
             },
             onDismiss = { showClearDialog = false }
+        )
+    }
+
+    if (showStorageDialog) {
+        StorageLocationDialog(
+            currentMode = storageMode,
+            currentPath = StorageSettings.getExternalPath(context),
+            onConfirm = { mode, path ->
+                performStorageSwitch(mode, path)
+                showStorageDialog = false
+            },
+            onDismiss = { showStorageDialog = false }
         )
     }
 }
