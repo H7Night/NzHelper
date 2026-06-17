@@ -83,6 +83,7 @@ import me.neko.nzhelper.data.SessionFormState
 import me.neko.nzhelper.data.SessionRepository
 import me.neko.nzhelper.ui.dialog.DetailsDialog
 import me.neko.nzhelper.ui.dialog.formatTime
+import me.neko.nzhelper.ui.screens.setting.CategorySettings
 import me.neko.nzhelper.ui.service.TimerService
 import java.time.LocalDateTime
 
@@ -314,7 +315,10 @@ fun HomeScreen() {
                 onDismiss = {
                     showDetailsDialog = false
                     context.startService(serviceIntent.apply { action = TimerService.ACTION_START })
-                }
+                },
+                locationList = CategorySettings.getLocations(context),
+                propsList = CategorySettings.getProps(context),
+                moodList = CategorySettings.getMoods(context)
             )
         }
     }

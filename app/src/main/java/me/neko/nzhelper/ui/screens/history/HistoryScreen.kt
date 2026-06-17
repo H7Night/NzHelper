@@ -72,6 +72,7 @@ import me.neko.nzhelper.data.SessionFormState
 import me.neko.nzhelper.data.SessionRepository
 import me.neko.nzhelper.ui.dialog.DetailsDialog
 import me.neko.nzhelper.ui.dialog.formatTime
+import me.neko.nzhelper.ui.screens.setting.CategorySettings
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -220,7 +221,10 @@ fun HistoryScreen() {
             }
             isEditing = false; selectedSession = null
         },
-        onDismiss = { isEditing = false; selectedSession = null }
+        onDismiss = { isEditing = false; selectedSession = null },
+        locationList = CategorySettings.getLocations(context),
+        propsList = CategorySettings.getProps(context),
+        moodList = CategorySettings.getMoods(context)
     )
 
     if (showDeleteConfirmDialog && sessionToDelete != null) {

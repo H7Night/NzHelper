@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -49,7 +48,10 @@ fun DetailsDialog(
     formState: SessionFormState,
     onFormStateChange: (SessionFormState) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    locationList: List<String> = listOf("卧室", "沙发", "厕所"),
+    propsList: List<String> = listOf("手", "飞机杯", "小胶妻"),
+    moodList: List<String> = listOf("平静", "愉悦", "兴奋", "疲惫")
 ) {
     if (!show) return
 
@@ -77,52 +79,20 @@ fun DetailsDialog(
                 )
 
                 // 地点
-                InputSection(title = "地点") {
-                    OutlinedTextField(
-                        value = formState.location,
-                        onValueChange = { onFormStateChange(formState.copy(location = it)) },
-                        placeholder = { Text("例如：卧室") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
+                SelectionSection(
+                    title = "地点",
+                    items = locationList,
+                    selected = formState.location,
+                    onSelected = { onFormStateChange(formState.copy(location = it)) }
+                )
 
                 // 开关组
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ElevatedFilterChip(
-                        selected = formState.watchedMovie,
-                        onClick = { onFormStateChange(formState.copy(watchedMovie = !formState.watchedMovie)) },
-                        label = { Text("小电影") },
-                        leadingIcon = if (formState.watchedMovie) {
-                            {
-                                Icon(
-                                    Icons.Default.Check,
-                                    null,
-                                    Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else null,
-                        modifier = Modifier.weight(1f)
-                    )
-                    ElevatedFilterChip(
-                        selected = formState.climax,
-                        onClick = { onFormStateChange(formState.copy(climax = !formState.climax)) },
-                        label = { Text("高潮") },
-                        leadingIcon = if (formState.climax) {
-                            {
-                                Icon(
-                                    Icons.Default.Check,
-                                    null,
-                                    Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else null,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                SwitchSection(
+                    watchedMovie = formState.watchedMovie,
+                    onWatchedMovieChange = { onFormStateChange(formState.copy(watchedMovie = it)) },
+                    climax = formState.climax,
+                    onClimaxChange = { onFormStateChange(formState.copy(climax = it)) }
+                )
 
                 // 评分
                 RatingSection(
@@ -133,7 +103,7 @@ fun DetailsDialog(
                 // 道具选择
                 SelectionSection(
                     title = "道具",
-                    items = listOf("手", "斐济杯", "小胶妻", "其他"),
+                    items = propsList,
                     selected = formState.props,
                     onSelected = { onFormStateChange(formState.copy(props = it)) }
                 )
@@ -141,7 +111,7 @@ fun DetailsDialog(
                 // 心情选择
                 SelectionSection(
                     title = "心情",
-                    items = listOf("平静", "愉悦", "兴奋", "疲惫"),
+                    items = moodList,
                     selected = formState.mood,
                     onSelected = { onFormStateChange(formState.copy(mood = it)) }
                 )
@@ -152,10 +122,8 @@ fun DetailsDialog(
                         value = formState.remark,
                         onValueChange = { onFormStateChange(formState.copy(remark = it)) },
                         placeholder = { Text("有什么想说的...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        maxLines = 3
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = Int.MAX_VALUE
                     )
                 }
 
@@ -180,6 +148,57 @@ fun DetailsDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SwitchSection(
+    watchedMovie: Boolean,
+    onWatchedMovieChange: (Boolean) -> Unit,
+    climax: Boolean,
+    onClimaxChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "状态",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ElevatedFilterChip(
+                selected = watchedMovie,
+                onClick = { onWatchedMovieChange(!watchedMovie) },
+                label = { Text("小电影") },
+                leadingIcon = if (watchedMovie) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            null,
+                            Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    }
+                } else null,
+                modifier = Modifier.weight(1f)
+            )
+            ElevatedFilterChip(
+                selected = climax,
+                onClick = { onClimaxChange(!climax) },
+                label = { Text("高潮") },
+                leadingIcon = if (climax) {
+                    {
+                        Icon(
+                            Icons.Default.Check,
+                            null,
+                            Modifier.size(FilterChipDefaults.IconSize)
+                        )
+                    }
+                } else null,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

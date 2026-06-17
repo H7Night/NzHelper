@@ -31,11 +31,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Mood
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Card
@@ -269,6 +272,13 @@ fun SettingsScreen(
         }
     }
 
+    var showPropsDialog by remember { mutableStateOf(false) }
+    var showMoodDialog by remember { mutableStateOf(false) }
+    var customProps by remember { mutableStateOf(CategorySettings.getProps(context)) }
+    var customMoods by remember { mutableStateOf(CategorySettings.getMoods(context)) }
+    var customLocations by remember { mutableStateOf(CategorySettings.getLocations(context)) }
+    var showLocationDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
@@ -447,6 +457,156 @@ fun SettingsScreen(
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                    )
+                ) {
+                    Column {
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showLocationDialog = true },
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Place, null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            headlineContent = {
+                                Text(
+                                    "自定义地点",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    "共 ${customLocations.size} 项，点击管理",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showPropsDialog = true },
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Category, null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            headlineContent = {
+                                Text(
+                                    "自定义道具",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    "共 ${customProps.size} 项，点击管理",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showMoodDialog = true },
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Mood, null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            headlineContent = {
+                                Text(
+                                    "自定义心情",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    "共 ${customMoods.size} 项，点击管理",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
                 }
             }
 
@@ -732,6 +892,66 @@ fun SettingsScreen(
                 showStorageDialog = false
             },
             onDismiss = { showStorageDialog = false }
+        )
+    }
+
+    if (showLocationDialog) {
+        CategoryManageDialog(
+            title = "管理地点",
+            items = customLocations,
+            onAdd = {
+                CategorySettings.addLocation(context, it)
+                customLocations = CategorySettings.getLocations(context)
+            },
+            onRemove = {
+                CategorySettings.removeLocation(context, it)
+                customLocations = CategorySettings.getLocations(context)
+            },
+            onReset = {
+                CategorySettings.resetLocations(context)
+                customLocations = CategorySettings.getLocations(context)
+            },
+            onDismiss = { showLocationDialog = false }
+        )
+    }
+
+    if (showPropsDialog) {
+        CategoryManageDialog(
+            title = "管理道具",
+            items = customProps,
+            onAdd = {
+                CategorySettings.addProp(context, it)
+                customProps = CategorySettings.getProps(context)
+            },
+            onRemove = {
+                CategorySettings.removeProp(context, it)
+                customProps = CategorySettings.getProps(context)
+            },
+            onReset = {
+                CategorySettings.resetProps(context)
+                customProps = CategorySettings.getProps(context)
+            },
+            onDismiss = { showPropsDialog = false }
+        )
+    }
+
+    if (showMoodDialog) {
+        CategoryManageDialog(
+            title = "管理心情",
+            items = customMoods,
+            onAdd = {
+                CategorySettings.addMood(context, it)
+                customMoods = CategorySettings.getMoods(context)
+            },
+            onRemove = {
+                CategorySettings.removeMood(context, it)
+                customMoods = CategorySettings.getMoods(context)
+            },
+            onReset = {
+                CategorySettings.resetMoods(context)
+                customMoods = CategorySettings.getMoods(context)
+            },
+            onDismiss = { showMoodDialog = false }
         )
     }
 }
