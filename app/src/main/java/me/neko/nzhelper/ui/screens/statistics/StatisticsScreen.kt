@@ -368,44 +368,73 @@ private fun calculateLatestInfo(sessions: List<Session>): LatestSessionInfo? {
     val time = latest.timestamp.format(DateTimeFormatter.ofPattern("a h:mm", Locale.CHINA))
     val durationText = formatDuration(latest.duration)
 
-    val isErrorState = daysAgo > 1
-
-    val detailText = when (daysAgo) {
-        0L -> getRandomComment(0)
-        1L -> getRandomComment(1)
-        else -> getRandomComment(daysAgo.toInt())
+    val isErrorState = if (daysAgo <= 1) {
+        val countOnLastDate = sessions.count { it.timestamp.toLocalDate() == lastDate }
+        if (countOnLastDate >= 2) {
+            true
+        } else {
+            val dayBeforeLast = lastDate.minusDays(1)
+            val hasSessionDayBefore = sessions.any { it.timestamp.toLocalDate() == dayBeforeLast }
+            hasSessionDayBefore
+        }
+    } else {
+        false
     }
+
+    val detailText = getRandomComment(daysAgo, isErrorState)
 
     return LatestSessionInfo(displayDate, time, durationText, daysAgo, detailText, isErrorState)
 }
 
-private fun getRandomComment(days: Int): String {
-    return when (days) {
-        0 -> listOf(
-            "适度释放，有益身心",
-            "记得多喝水，补充水分",
-            "注意休息，不要过度劳累",
-            "保持良好的生活习惯"
-        ).random()
+private fun getRandomComment(days: Long, isError: Boolean): String {
+    return if (isError) {
+        when (days) {
+            0L -> listOf(
+                "今日不宜贪多，请注意节制",
+                "频率过高，身体需要休息",
+                "透支精力，明天暂停吧",
+                "为了健康，请适当克制"
+            ).random()
 
-        1 -> listOf(
-            "昨日适度，保持规律",
-            "劳逸结合最重要",
-            "注意频率，呵护身体"
-        ).random()
+            1L -> listOf(
+                "连续高强度，身体吃不消的",
+                "昨日频率较高，今日需休养",
+                "注意节奏，不要贪多",
+                "过于频繁，容易疲劳"
+            ).random()
 
-        2 -> listOf(
-            "坚持了两天，自律真棒",
-            "养精蓄锐，状态回升",
-            "身体正在自我修复中"
-        ).random()
+            else -> listOf(
+                "近期频率偏高，建议克制",
+                "注意身体健康，不要过度"
+            ).random()
+        }
+    } else {
+        when (days) {
+            0L -> listOf(
+                "适度释放，身心舒畅",
+                "保持规律，劳逸结合",
+                "状态不错，继续保持",
+                "记得多喝水，补充水分"
+            ).random()
 
-        else -> listOf(
-            "坚持了 $days 天，非常有毅力",
-            "身体健康，精力充沛",
-            "继续保持健康的生活方式",
-            "身体状态正在恢复"
-        ).random()
+            1L -> listOf(
+                "昨日适度，状态不错",
+                "间隔合理，精力充沛",
+                "节奏很好，享受生活"
+            ).random()
+
+            2L -> listOf(
+                "休息了两天，精力恢复",
+                "身体状态满分，蓄势待发",
+                "休养生息，很有活力"
+            ).random()
+
+            else -> listOf(
+                "很久没活动了，身体状态极佳",
+                "保持健康的生活方式",
+                "精力充沛，充满活力"
+            ).random()
+        }
     }
 }
 
@@ -1167,29 +1196,20 @@ private fun formatDuration(totalSeconds: Int): String {
 
 private fun buildTotalStatStatus(sessions: List<Session>): String {
     if (sessions.isEmpty()) return ""
-    // 数据少于2条，无法计算间隔
     if (sessions.size < 2) return "刚开始记录，保持适度"
 
     val firstDate = sessions.first().timestamp.toLocalDate()
     val lastDate = sessions.last().timestamp.toLocalDate()
-    // 计算首尾记录的时间跨度（天），至少为1天
+ 
     val daysSpan = java.time.temporal.ChronoUnit.DAYS.between(firstDate, lastDate).coerceAtLeast(1)
 
-    // 计算平均每天的频率 (次/天)
     val frequency = sessions.size.toDouble() / daysSpan
 
     return when {
-        // 每天一次甚至更多 -> 过度
         frequency >= 1.0 -> "平均每天一次以上，频率偏高，建议适度节制"
-
-        // 两三天一次 -> 频繁
         frequency >= 0.3 -> "平均两三天一次，较为频繁，注意休息"
-
-        // 一周一次左右 -> 适度
         frequency >= 0.14 -> "平均一周左右一次，频率适中，身心健康"
-
-        // 更少 -> 节制
-        else -> "频率较低，注意保持良好心态"
+        else -> "频率较低，精力充沛"
     }
 }
 
