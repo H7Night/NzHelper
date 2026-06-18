@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -431,85 +432,85 @@ private fun TimerCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp, horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(vertical = 32.dp, horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+            Text(
+                text = "记录新的手艺活",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = formatTime(elapsedSeconds),
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "记录新的手艺活",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = formatTime(elapsedSeconds),
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                FilledIconButton(
+                    onClick = onReset,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(64.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
                 ) {
-                    FilledIconButton(
-                        onClick = onReset,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.size(64.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Replay,
-                            contentDescription = "重置",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Rounded.Replay,
+                        contentDescription = "重置",
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
 
-                    FilledTonalButton(
-                        onClick = onToggleRun,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.size(width = 124.dp, height = 64.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = if (isRunning) "暂停" else "开始",
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = if (isRunning) "暂停" else "开始",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                FilledTonalButton(
+                    onClick = onToggleRun,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(64.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (isRunning) "暂停" else "开始",
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (isRunning) "暂停" else "开始",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                    FilledIconButton(
-                        onClick = onStop,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.size(64.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Stop,
-                            contentDescription = "结束",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                FilledIconButton(
+                    onClick = onStop,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(64.dp),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Stop,
+                        contentDescription = "结束",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
