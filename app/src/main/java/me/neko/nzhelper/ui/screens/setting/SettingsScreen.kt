@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,7 +45,6 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -721,11 +721,19 @@ fun SettingsScreen(
                             },
                             headlineContent = {
                                 Column {
-                                    Text(
-                                        "回收站",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            "回收站",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        if (recycleBinCount > 0) {
+                                            Badge { Text("$recycleBinCount") }
+                                        }
+                                    }
                                     Text(
                                         if (recycleBinCount > 0) "共 $recycleBinCount 条记录，点击管理"
                                         else "暂无已删除的记录",
@@ -735,27 +743,11 @@ fun SettingsScreen(
                                 }
                             },
                             trailingContent = {
-                                if (recycleBinCount > 0) {
-                                    BadgedBox(
-                                        badge = {
-                                            Badge { Text("$recycleBinCount") }
-                                        }
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = 0.5f
-                                            ),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
                             },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                         )

@@ -309,6 +309,12 @@ private val licenseList = listOf(
         "https://developer.android.com/jetpack/androidx/releases/appcompat",
         LicenseType.Apache2
     ),
+    LicenseItem(
+        "Google",
+        "WorkManager",
+        "https://developer.android.com/jetpack/androidx/releases/work",
+        LicenseType.Apache2
+    ),
 )
 
 data class LicenseItem(

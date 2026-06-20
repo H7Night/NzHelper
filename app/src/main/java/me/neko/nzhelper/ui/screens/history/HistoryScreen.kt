@@ -1,5 +1,6 @@
 package me.neko.nzhelper.ui.screens.history
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -230,12 +231,16 @@ fun HistoryScreen() {
     if (showDeleteConfirmDialog && sessionToDelete != null) {
         ConfirmDialog(
             icon = Icons.Rounded.Delete,
-            title = "删除记录",
-            message = "确定要删除这条记录吗？此操作不可撤销。",
-            confirmText = "删除",
+            title = "移入回收站",
+            message = "确定要将这条记录移入回收站吗？可从回收站恢复。",
+            confirmText = "移入回收站",
             onConfirm = {
-                sessions.remove(sessionToDelete)
-                scope.launch { SessionRepository.saveSessions(context, sessions) }
+                val session = sessionToDelete!!
+                sessions.remove(session)
+                scope.launch {
+                    SessionRepository.moveSessionsToRecycleBin(context, listOf(session))
+                    Toast.makeText(context, "已移入回收站", Toast.LENGTH_SHORT).show()
+                }
                 showDeleteConfirmDialog = false
                 sessionToDelete = null
             },

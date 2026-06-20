@@ -49,6 +49,7 @@ import me.neko.nzhelper.ui.screens.history.HistoryScreen
 import me.neko.nzhelper.ui.screens.home.HomeScreen
 import me.neko.nzhelper.ui.screens.lock.AppLockManager
 import me.neko.nzhelper.ui.screens.lock.LockScreen
+import me.neko.nzhelper.ui.screens.setting.RecycleBinScreen
 import me.neko.nzhelper.ui.screens.setting.SettingsScreen
 import me.neko.nzhelper.ui.screens.statistics.StatisticsScreen
 import me.neko.nzhelper.ui.util.UpdateChecker
@@ -199,6 +200,7 @@ fun MainScreen() {
                 composable(BottomNavItem.Statistics.route) { StatisticsScreen() }
                 composable("about") { AboutScreen(navController) }
                 composable("open_source") { OpenSourceScreen(navController) }
+                composable("recycle_bin") { RecycleBinScreen(navController = navController) }
             }
         }
 

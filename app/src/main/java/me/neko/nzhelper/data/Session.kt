@@ -14,3 +14,8 @@ data class Session(
     @SerializedName("mood") val mood: String,
     @SerializedName("props") val props: String
 )
+
+data class RecycleBinItem(
+    @SerializedName("session") val session: Session,
+    @SerializedName("deletedTimestamp") val deletedTimestamp: Long = System.currentTimeMillis()
+)
