@@ -214,7 +214,14 @@ fun HomeScreen() {
                 item {
                     OutlinedButton(
                         onClick = {
-                            formState = SessionFormState()
+                            val now = LocalDateTime.now()
+                            formState = SessionFormState(
+                                manualYear = now.year,
+                                manualMonth = now.monthValue,
+                                manualDay = now.dayOfMonth,
+                                manualHour = now.hour,
+                                manualMinute = now.minute
+                            )
                             showManualAddDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -355,9 +362,15 @@ fun HomeScreen() {
                         Toast.makeText(context, "请输入时长", Toast.LENGTH_SHORT).show()
                         return@DetailsDialog
                     }
-                    val now = LocalDateTime.now()
+                    val timestamp = try {
+                        formState.toLocalDateTime()
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "日期时间无效，请重新选择", Toast.LENGTH_SHORT)
+                            .show()
+                        return@DetailsDialog
+                    }
                     val session = Session(
-                        timestamp = now,
+                        timestamp = timestamp,
                         duration = duration,
                         remark = formState.remark,
                         location = formState.location,
@@ -373,9 +386,7 @@ fun HomeScreen() {
                     formState = SessionFormState()
                     showManualAddDialog = false
                 },
-                onDismiss = {
-                    showManualAddDialog = false
-                },
+                onDismiss = { showManualAddDialog = false },
                 locationList = CategorySettings.getLocations(context),
                 propsList = CategorySettings.getProps(context),
                 moodList = CategorySettings.getMoods(context)

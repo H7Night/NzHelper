@@ -1,14 +1,17 @@
 package me.neko.nzhelper.ui.dialog
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -29,8 +34,13 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.neko.nzhelper.data.SessionFormState
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -86,6 +98,11 @@ fun DetailsDialog(
                 // 手动添加时显示时长输入
                 if (showDurationField) {
                     DurationInputSection(
+                        formState = formState,
+                        onFormStateChange = onFormStateChange
+                    )
+
+                    DateTimeInputSection(
                         formState = formState,
                         onFormStateChange = onFormStateChange
                     )
@@ -374,6 +391,119 @@ private fun DurationInputSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.End)
         )
+    }
+}
+
+@Composable
+private fun DateTimeInputSection(
+    formState: SessionFormState,
+    onFormStateChange: (SessionFormState) -> Unit
+) {
+    val context = LocalContext.current
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "日期时间",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "%04d-%02d-%02d".format(
+                        formState.manualYear,
+                        formState.manualMonth,
+                        formState.manualDay
+                    )
+                )
+            }
+
+            OutlinedButton(
+                onClick = { showTimePicker = true },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "%02d:%02d".format(formState.manualHour, formState.manualMinute)
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val selectedDate = LocalDate.of(year, month + 1, dayOfMonth)
+                if (selectedDate.isAfter(LocalDate.now())) {
+                    Toast.makeText(context, "不能选择未来的日期", Toast.LENGTH_SHORT).show()
+                } else {
+                    onFormStateChange(
+                        formState.copy(
+                            manualYear = year,
+                            manualMonth = month + 1,
+                            manualDay = dayOfMonth
+                        )
+                    )
+                }
+                showDatePicker = false
+            },
+            formState.manualYear,
+            formState.manualMonth - 1,
+            formState.manualDay
+        ).apply {
+            setOnCancelListener { showDatePicker = false }
+        }.show()
+    }
+
+    if (showTimePicker) {
+        android.app.TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val selectedDate =
+                    LocalDate.of(formState.manualYear, formState.manualMonth, formState.manualDay)
+                val selectedTime = LocalTime.of(hourOfDay, minute)
+
+                if (selectedDate.isEqual(LocalDate.now()) && selectedTime.isAfter(LocalTime.now())) {
+                    Toast.makeText(context, "不能选择未来的时间", Toast.LENGTH_SHORT).show()
+                } else {
+                    onFormStateChange(
+                        formState.copy(
+                            manualHour = hourOfDay,
+                            manualMinute = minute
+                        )
+                    )
+                }
+                showTimePicker = false
+            },
+            formState.manualHour,
+            formState.manualMinute,
+            true
+        ).apply {
+            setOnCancelListener { showTimePicker = false }
+        }.show()
     }
 }
 
