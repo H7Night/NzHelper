@@ -71,7 +71,7 @@ androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
             @Suppress("UnstableApiUsage")
-            output.outputFileName.set("NZHelper_v${versionNameStr}_${variant.name}.apk")
+            output.outputFileName.set("NzHelper_v${versionNameStr}_${variant.name}.apk")
         }
     }
 }
