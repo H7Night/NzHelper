@@ -280,7 +280,15 @@ private fun RecycleBinSessionCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     buildString {
-                        append("${item.session.duration}分钟 · ${item.session.mood} · 评分${item.session.rating}")
+                        val durationSecs = item.session.duration
+                        val dMin = durationSecs / 60
+                        val dSec = durationSecs % 60
+                        val durationText = when {
+                            dMin > 0 && dSec > 0 -> "${dMin}分${dSec}秒"
+                            dMin > 0 -> "${dMin}分钟"
+                            else -> "${dSec}秒"
+                        }
+                        append("$durationText · ${item.session.mood} · 评分${item.session.rating}")
                         if (item.session.location.isNotEmpty()) append(" · ${item.session.location}")
                     },
                     style = MaterialTheme.typography.bodyMedium,
