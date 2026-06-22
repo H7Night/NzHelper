@@ -69,6 +69,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -309,7 +310,7 @@ fun SettingsScreen(
     }
     var webDavBackingUp by remember { mutableStateOf(false) }
     var webDavRestoring by remember { mutableStateOf(false) }
-    var webDavLastBackup by remember { mutableStateOf(WebDavSettings.getLastBackupTime(context)) }
+    var webDavLastBackup by remember { mutableLongStateOf(WebDavSettings.getLastBackupTime(context)) }
 
     Scaffold(
         topBar = {
