@@ -19,3 +19,10 @@ data class RecycleBinItem(
     @SerializedName("session") val session: Session,
     @SerializedName("deletedTimestamp") val deletedTimestamp: Long = System.currentTimeMillis()
 )
+
+data class WebDavBackupPayload(
+    @SerializedName("version") val version: Int = 1,
+    @SerializedName("exportedAt") val exportedAt: Long,
+    @SerializedName("sessions") val sessions: List<Session> = emptyList(),
+    @SerializedName("recycleBin") val recycleBin: List<RecycleBinItem> = emptyList()
+)

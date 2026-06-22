@@ -34,6 +34,9 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Download
@@ -47,6 +50,7 @@ import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -75,6 +79,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,6 +100,7 @@ import me.neko.nzhelper.data.SessionRepository
 import me.neko.nzhelper.ui.screens.history.ConfirmDialog
 import me.neko.nzhelper.ui.screens.lock.AppLockManager
 import java.io.OutputStreamWriter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -106,6 +112,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val configuration = LocalConfiguration.current
 
     val sessions = remember { mutableStateListOf<Session>() }
     val gson = NzApplication.gson
@@ -295,6 +302,14 @@ fun SettingsScreen(
     var customMoods by remember { mutableStateOf(CategorySettings.getMoods(context)) }
     var customLocations by remember { mutableStateOf(CategorySettings.getLocations(context)) }
     var showLocationDialog by remember { mutableStateOf(false) }
+
+    var showWebDavDialog by remember { mutableStateOf(false) }
+    var webDavConfigured by remember {
+        mutableStateOf(WebDavSettings.isConfigured(context))
+    }
+    var webDavBackingUp by remember { mutableStateOf(false) }
+    var webDavRestoring by remember { mutableStateOf(false) }
+    var webDavLastBackup by remember { mutableStateOf(WebDavSettings.getLastBackupTime(context)) }
 
     Scaffold(
         topBar = {
@@ -979,6 +994,212 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                    )
+                ) {
+                    Column {
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showWebDavDialog = true }
+                                .padding(vertical = 6.dp),
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.Cloud,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            },
+                            headlineContent = {
+                                Column {
+                                    Text(
+                                        "WebDAV 备份",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        if (webDavConfigured) "已配置，点击修改"
+                                        else "未配置，点击设置",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        val webDavBackupDateStr = remember(webDavLastBackup, configuration) {
+                            if (webDavLastBackup > 0) {
+                                val locale = configuration.locales[0] ?: Locale.getDefault()
+                                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", locale)
+                                    .format(java.util.Date(webDavLastBackup))
+                            } else null
+                        }
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = webDavConfigured && !webDavBackingUp) {
+                                    webDavBackingUp = true
+                                    scope.launch {
+                                        val (_, msg) = SessionRepository.backupToWebDav(context)
+                                        webDavBackingUp = false
+                                        webDavLastBackup = WebDavSettings.getLastBackupTime(context)
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (webDavBackingUp) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Outlined.CloudUpload, null,
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            headlineContent = {
+                                Column {
+                                    Text(
+                                        "云端备份",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (webDavConfigured) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        webDavBackupDateStr?.let { "上次备份：$it" }
+                                            ?: "上传记录到 WebDAV 服务器",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = webDavConfigured && !webDavRestoring) {
+                                    webDavRestoring = true
+                                    scope.launch {
+                                        val (ok, msg) = SessionRepository.restoreFromWebDav(context)
+                                        webDavRestoring = false
+                                        if (ok) {
+                                            val loaded = SessionRepository.loadSessions(context)
+                                            sessions.clear()
+                                            sessions.addAll(loaded)
+                                            recycleBinCount =
+                                                SessionRepository.loadRecycleBin(context).size
+                                        }
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            leadingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (webDavRestoring) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Outlined.CloudDownload, null,
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            headlineContent = {
+                                Column {
+                                    Text(
+                                        "云端恢复",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (webDavConfigured) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    Text(
+                                        "从 WebDAV 恢复并合并到本地",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
                 ) {
                     ListItem(
@@ -1112,6 +1333,14 @@ fun SettingsScreen(
             },
             onDismiss = { showMoodDialog = false }
         )
+    }
+
+    if (showWebDavDialog) {
+        WebDavSettingsDialog(onDismiss = {
+            showWebDavDialog = false
+            webDavConfigured = WebDavSettings.isConfigured(context)
+            webDavLastBackup = WebDavSettings.getLastBackupTime(context)
+        })
     }
 }
 
