@@ -25,6 +25,10 @@ fun getGitShortHash(): String {
     }
 }
 
+val commitCount = getGitCommitCount()
+val gitHash = getGitShortHash()
+val versionNameStr = "1.0.2-alpha.r$commitCount.$gitHash"
+
 android {
     namespace = "me.neko.nzhelper"
     compileSdk = 37
@@ -34,11 +38,8 @@ android {
         minSdk = 26
         targetSdk = 37
 
-        val commitCount = getGitCommitCount()
-        val gitHash = getGitShortHash()
-
-        versionCode = getGitCommitCount()
-        versionName = "1.0.2-alpha.r$commitCount.$gitHash"
+        versionCode = commitCount
+        versionName = versionNameStr
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -53,15 +54,26 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
 
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            @Suppress("UnstableApiUsage")
+            output.outputFileName.set("NZHelper_v${versionNameStr}_${variant.name}.apk")
+        }
+    }
 }
 
 kotlin {
