@@ -17,12 +17,15 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -79,6 +82,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -135,7 +139,6 @@ fun SettingsScreen(
     }
 
     var storageMode by remember { mutableStateOf(StorageSettings.getMode(context)) }
-
     var pendingStorageSwitch by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     val storagePermissionLauncher = rememberLauncherForActivityResult(
@@ -182,8 +185,7 @@ fun SettingsScreen(
                                 val loaded = SessionRepository.loadSessions(context)
                                 sessions.clear()
                                 sessions.addAll(loaded)
-                                recycleBinCount =
-                                    SessionRepository.loadRecycleBin(context).size
+                                recycleBinCount = SessionRepository.loadRecycleBin(context).size
                                 Toast.makeText(
                                     context,
                                     "存储位置已切换，记录已合并去重",
@@ -206,7 +208,6 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // 加载数据用于导出
     LaunchedEffect(Unit) {
         val loaded = SessionRepository.loadSessions(context)
         sessions.clear()
@@ -214,34 +215,33 @@ fun SettingsScreen(
         recycleBinCount = SessionRepository.loadRecycleBin(context).size
     }
 
-    // 导入 Launcher
-    val importLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            uri?.let { it ->
-                scope.launch {
-                    val imported = SessionRepository.parseImportFile(context, it, gson, listType)
-                    if (imported.isNotEmpty()) {
-                        val existingTimestamps = sessions.map { it.timestamp }.toSet()
-                        val newSessions = imported.filter { it.timestamp !in existingTimestamps }
-                        sessions.addAll(newSessions)
-                        SessionRepository.saveSessions(context, sessions)
-                        val mergedCount = newSessions.size
-                        val skippedCount = imported.size - mergedCount
-                        val msg = if (skippedCount > 0) {
-                            "成功导入 $mergedCount 条新记录，跳过 $skippedCount 条重复记录"
-                        } else {
-                            "成功导入 $mergedCount 条记录"
-                        }
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                val imported = SessionRepository.parseImportFile(context, it, gson, listType)
+                if (imported.isNotEmpty()) {
+                    val existingTimestamps = sessions.map { it.timestamp }.toSet()
+                    val newSessions = imported.filter { it.timestamp !in existingTimestamps }
+                    sessions.addAll(newSessions)
+                    SessionRepository.saveSessions(context, sessions)
+                    val mergedCount = newSessions.size
+                    val skippedCount = imported.size - mergedCount
+                    val msg = if (skippedCount > 0) {
+                        "成功导入 $mergedCount 条新记录，跳过 $skippedCount 条重复记录"
                     } else {
-                        Toast.makeText(context, "导入失败：文件格式不正确或为空", Toast.LENGTH_SHORT)
-                            .show()
+                        "成功导入 $mergedCount 条记录"
                     }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "导入失败：文件格式不正确或为空", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         }
+    }
 
-    // 导出 Launcher
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
@@ -259,7 +259,6 @@ fun SettingsScreen(
         }
     }
 
-    // 执行存储切换
     val performStorageSwitch: (String, String) -> Unit = { mode, path ->
         if (mode == StorageSettings.MODE_EXTERNAL && !StorageSettings.hasExternalStoragePermission(
                 context
@@ -305,12 +304,58 @@ fun SettingsScreen(
     var showLocationDialog by remember { mutableStateOf(false) }
 
     var showWebDavDialog by remember { mutableStateOf(false) }
-    var webDavConfigured by remember {
-        mutableStateOf(WebDavSettings.isConfigured(context))
-    }
+    var webDavConfigured by remember { mutableStateOf(WebDavSettings.isConfigured(context)) }
     var webDavBackingUp by remember { mutableStateOf(false) }
     var webDavRestoring by remember { mutableStateOf(false) }
     var webDavLastBackup by remember { mutableLongStateOf(WebDavSettings.getLastBackupTime(context)) }
+
+    val requestToggleLock: (Boolean) -> Unit = { targetState ->
+        val activity = context as? FragmentActivity
+        if (activity == null) {
+            Toast.makeText(context, "无法启动验证", Toast.LENGTH_SHORT).show()
+        } else if (targetState) {
+            when (AppLockManager.canAuthenticate(context)) {
+                BiometricManager.BIOMETRIC_SUCCESS -> {
+                    AppLockManager.authenticate(activity, onSuccess = {
+                        AppLockManager.setLockEnabled(context, true)
+                        lockEnabled = true
+                    })
+                }
+
+                BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                    Toast.makeText(
+                        context,
+                        "未设置锁屏密码或生物识别，请先在系统设置中配置",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
+                else -> {
+                    Toast.makeText(context, "设备不支持生物识别或锁屏验证", Toast.LENGTH_LONG)
+                        .show()
+                }
+            }
+        } else {
+            AppLockManager.authenticate(activity, onSuccess = {
+                AppLockManager.setLockEnabled(context, false)
+                lockEnabled = false
+            })
+        }
+    }
+
+    val toggleAutoStart: (Boolean) -> Unit = { enabled ->
+        autoStartEnabled = enabled
+        context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
+            .edit { putBoolean("auto_start_timer", enabled) }
+    }
+
+    val webDavBackupDateStr = remember(webDavLastBackup, configuration) {
+        if (webDavLastBackup > 0) {
+            val locale = configuration.locales[0] ?: Locale.getDefault()
+            java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", locale)
+                .format(java.util.Date(webDavLastBackup))
+        } else null
+    }
 
     Scaffold(
         topBar = {
@@ -335,911 +380,251 @@ fun SettingsScreen(
                 top = innerPadding.calculateTopPadding() + 16.dp,
                 bottom = innerPadding.calculateBottomPadding() + 16.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    // 生物识别验证逻辑
-                    val requestToggleLock: (Boolean) -> Unit = { targetState ->
-                        val activity = context as? FragmentActivity
-                        if (activity == null) {
-                            Toast.makeText(context, "无法启动验证", Toast.LENGTH_SHORT).show()
-                        } else if (targetState) {
-                            when (AppLockManager.canAuthenticate(context)) {
-                                BiometricManager.BIOMETRIC_SUCCESS -> {
-                                    AppLockManager.authenticate(
-                                        activity,
-                                        onSuccess = {
-                                            AppLockManager.setLockEnabled(context, true)
-                                            lockEnabled = true
-                                        }
-                                    )
-                                }
-
-                                BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
-                                    Toast.makeText(
-                                        context,
-                                        "未设置锁屏密码或生物识别，请先在系统设置中配置",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-
-                                else -> {
-                                    Toast.makeText(
-                                        context,
-                                        "设备不支持生物识别或锁屏验证",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            }
-                        } else {
-                            AppLockManager.authenticate(
-                                activity,
-                                onSuccess = {
-                                    AppLockManager.setLockEnabled(context, false)
-                                    lockEnabled = false
-                                }
-                            )
-                        }
-                    }
-                    ListItem(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = LocalIndication.current
-                            ) {
-                                requestToggleLock(!lockEnabled)
-                            }
-                            .padding(vertical = 6.dp),
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Lock,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        },
-                        headlineContent = {
-                            Column {
-                                Text(
-                                    "应用锁",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "使用生物识别或锁屏密码解锁",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Lock,
+                        title = "应用锁",
+                        subtitle = "使用生物识别或锁屏密码解锁",
+                        iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { requestToggleLock(!lockEnabled) },
                         trailingContent = {
                             Switch(
                                 checked = lockEnabled,
                                 onCheckedChange = requestToggleLock
                             )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        }
                     )
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 72.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-
-                    val toggleAutoStart: (Boolean) -> Unit = { enabled ->
-                        autoStartEnabled = enabled
-                        context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
-                            .edit { putBoolean("auto_start_timer", enabled) }
-                    }
-                    ListItem(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = LocalIndication.current
-                            ) {
-                                toggleAutoStart(!autoStartEnabled)
-                            }
-                            .padding(vertical = 6.dp),
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Timer,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        },
-                        headlineContent = {
-                            Column {
-                                Text(
-                                    "自动计时",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "进入首页时自动开始计时",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.Timer,
+                        title = "自动计时",
+                        subtitle = "进入首页时自动开始计时",
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = { toggleAutoStart(!autoStartEnabled) },
                         trailingContent = {
                             Switch(
                                 checked = autoStartEnabled,
                                 onCheckedChange = toggleAutoStart
                             )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                    )
-                ) {
-                    Column {
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showLocationDialog = true }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Place, null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "自定义地点",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "共 ${customLocations.size} 项，点击管理",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showPropsDialog = true }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Category, null,
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "自定义道具",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "共 ${customProps.size} 项，点击管理",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showMoodDialog = true }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Mood, null,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "自定义心情",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "共 ${customMoods.size} 项，点击管理",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    ListItem(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showStorageDialog = true }
-                            .padding(vertical = 6.dp),
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Outlined.FolderOpen,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        },
-                        headlineContent = {
-                            Column {
-                                Text(
-                                    "数据存储位置",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    if (storageMode == StorageSettings.MODE_INTERNAL) "当前：应用内部存储"
-                                    else "当前：${StorageSettings.getExternalPath(context)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        trailingContent = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    Column {
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("recycle_bin") }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete, null,
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            "回收站",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        if (recycleBinCount > 0) {
-                                            Badge { Text("$recycleBinCount") }
-                                        }
-                                    }
-                                    Text(
-                                        if (recycleBinCount > 0) "共 $recycleBinCount 条记录，点击管理"
-                                        else "暂无已删除的记录",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val newEnabled = !autoCleanEnabled
-                                    autoCleanEnabled = newEnabled
-                                    RecycleBinSettings.setAutoCleanEnabled(context, newEnabled)
-                                }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.AutoDelete,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "自动清理回收站",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        if (autoCleanEnabled) "已开启，记录将在 30 天后自动永久删除"
-                                        else "已关闭，记录将一直保留在回收站中",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = autoCleanEnabled,
-                                    onCheckedChange = { enabled ->
-                                        autoCleanEnabled = enabled
-                                        RecycleBinSettings.setAutoCleanEnabled(context, enabled)
-                                    }
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showClearDialog = true }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.errorContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.DeleteSweep, null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "移入回收站",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        "将所有记录移入回收站，可从回收站恢复",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    Column {
-                        // 导出数据
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    exportLauncher.launch("NzHelper_Export_${System.currentTimeMillis()}.json")
-                                }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Upload,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "导出数据",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "将记录导出为 JSON 文件",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        // 导入数据
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    importLauncher.launch(arrayOf("application/json", "text/plain"))
-                                }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Download, null,
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "导入数据",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        "从 JSON 文件恢复记录",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                    )
-                ) {
-                    Column {
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showWebDavDialog = true }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Cloud,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "WebDAV 备份",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        if (webDavConfigured) "已配置，点击修改"
-                                        else "未配置，点击设置",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        val webDavBackupDateStr = remember(webDavLastBackup, configuration) {
-                            if (webDavLastBackup > 0) {
-                                val locale = configuration.locales[0] ?: Locale.getDefault()
-                                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", locale)
-                                    .format(java.util.Date(webDavLastBackup))
-                            } else null
                         }
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = webDavConfigured && !webDavBackingUp) {
-                                    webDavBackingUp = true
-                                    scope.launch {
-                                        val (_, msg) = SessionRepository.backupToWebDav(context)
-                                        webDavBackingUp = false
-                                        webDavLastBackup = WebDavSettings.getLastBackupTime(context)
-                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (webDavBackingUp) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Outlined.CloudUpload, null,
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "云端备份",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (webDavConfigured) MaterialTheme.colorScheme.onSurface
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        webDavBackupDateStr?.let { "上次备份：$it" }
-                                            ?: "上传记录到 WebDAV 服务器",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 72.dp),
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = webDavConfigured && !webDavRestoring) {
-                                    webDavRestoring = true
-                                    scope.launch {
-                                        val (ok, msg) = SessionRepository.restoreFromWebDav(context)
-                                        webDavRestoring = false
-                                        if (ok) {
-                                            val loaded = SessionRepository.loadSessions(context)
-                                            sessions.clear()
-                                            sessions.addAll(loaded)
-                                            recycleBinCount =
-                                                SessionRepository.loadRecycleBin(context).size
-                                        }
-                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                                .padding(vertical = 6.dp),
-                            leadingContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (webDavRestoring) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Outlined.CloudDownload, null,
-                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            headlineContent = {
-                                Column {
-                                    Text(
-                                        "云端恢复",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (webDavConfigured) MaterialTheme.colorScheme.onSurface
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        "从 WebDAV 恢复并合并到本地",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
+                    )
                 }
             }
 
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                ) {
-                    ListItem(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { navController.navigate("about") }
-                            .padding(vertical = 6.dp),
-                        leadingContent = {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Info,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        },
-                        headlineContent = {
-                            Text(
-                                "关于",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Place,
+                        title = "自定义地点",
+                        subtitle = "共 ${customLocations.size} 项，点击管理",
+                        iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { showLocationDialog = true }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.Category,
+                        title = "自定义道具",
+                        subtitle = "共 ${customProps.size} 项，点击管理",
+                        iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        onClick = { showPropsDialog = true }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.Mood,
+                        title = "自定义心情",
+                        subtitle = "共 ${customMoods.size} 项，点击管理",
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = { showMoodDialog = true }
+                    )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.FolderOpen,
+                        title = "数据存储位置",
+                        subtitle = if (storageMode == StorageSettings.MODE_INTERNAL) "当前：应用内部存储"
+                        else "当前：${StorageSettings.getExternalPath(context)}",
+                        iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { showStorageDialog = true }
+                    )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Delete,
+                        title = "回收站",
+                        subtitle = if (recycleBinCount > 0) "共 $recycleBinCount 条记录，点击管理"
+                        else "暂无已删除的记录",
+                        iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        onClick = { navController.navigate("recycle_bin") },
+                        badgeText = if (recycleBinCount > 0) "$recycleBinCount" else null
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.AutoDelete,
+                        title = "自动清理回收站",
+                        subtitle = if (autoCleanEnabled) "已开启，记录将在 30 天后自动永久删除"
+                        else "已关闭，记录将一直保留在回收站中",
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = {
+                            autoCleanEnabled = !autoCleanEnabled
+                            RecycleBinSettings.setAutoCleanEnabled(context, autoCleanEnabled)
                         },
                         trailingContent = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(20.dp)
+                            Switch(
+                                checked = autoCleanEnabled,
+                                onCheckedChange = { enabled ->
+                                    autoCleanEnabled = enabled
+                                    RecycleBinSettings.setAutoCleanEnabled(context, enabled)
+                                }
                             )
+                        }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.DeleteSweep,
+                        title = "移入回收站",
+                        subtitle = "将所有记录移入回收站，可从回收站恢复",
+                        titleColor = MaterialTheme.colorScheme.error,
+                        iconContainerColor = MaterialTheme.colorScheme.errorContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        onClick = { showClearDialog = true }
+                    )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Upload,
+                        title = "导出数据",
+                        subtitle = "将记录导出为 JSON 文件",
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = { exportLauncher.launch("NzHelper_Export_${System.currentTimeMillis()}.json") }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.Download,
+                        title = "导入数据",
+                        subtitle = "从 JSON 文件恢复记录",
+                        iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        onClick = {
+                            importLauncher.launch(
+                                arrayOf(
+                                    "application/json",
+                                    "text/plain"
+                                )
+                            )
+                        }
+                    )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Cloud,
+                        title = "WebDAV 备份",
+                        subtitle = if (webDavConfigured) "已配置，点击修改" else "未配置，点击设置",
+                        iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { showWebDavDialog = true }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.CloudUpload,
+                        title = "云端备份",
+                        subtitle = webDavBackupDateStr?.let { "上次备份：$it" }
+                            ?: "上传记录到 WebDAV 服务器",
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        onClick = {
+                            if (webDavConfigured && !webDavBackingUp) {
+                                webDavBackingUp = true
+                                scope.launch {
+                                    val (_, msg) = SessionRepository.backupToWebDav(context)
+                                    webDavBackingUp = false
+                                    webDavLastBackup = WebDavSettings.getLastBackupTime(context)
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        enabled = webDavConfigured && !webDavBackingUp,
+                        trailingContent = {
+                            if (webDavBackingUp) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                TrailingArrowIcon()
+                            }
+                        }
+                    )
+                    SettingsDivider()
+                    SettingsItem(
+                        icon = Icons.Outlined.CloudDownload,
+                        title = "云端恢复",
+                        subtitle = "从 WebDAV 恢复并合并到本地",
+                        iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        onClick = {
+                            if (webDavConfigured && !webDavRestoring) {
+                                webDavRestoring = true
+                                scope.launch {
+                                    val (ok, msg) = SessionRepository.restoreFromWebDav(context)
+                                    webDavRestoring = false
+                                    if (ok) {
+                                        val loaded = SessionRepository.loadSessions(context)
+                                        sessions.clear()
+                                        sessions.addAll(loaded)
+                                        recycleBinCount =
+                                            SessionRepository.loadRecycleBin(context).size
+                                    }
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = webDavConfigured && !webDavRestoring,
+                        trailingContent = {
+                            if (webDavRestoring) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                TrailingArrowIcon()
+                            }
+                        }
+                    )
+                }
+            }
+
+            item {
+                SettingsCard {
+                    SettingsItem(
+                        icon = Icons.Outlined.Info,
+                        title = "关于",
+                        iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        onClick = { navController.navigate("about") }
                     )
                 }
             }
@@ -1343,6 +728,119 @@ fun SettingsScreen(
             webDavLastBackup = WebDavSettings.getLastBackupTime(context)
         })
     }
+}
+
+@Composable
+private fun TrailingArrowIcon() {
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier.size(20.dp)
+    )
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 72.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    )
+}
+
+@Composable
+private fun SettingsCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    iconContainerColor: Color,
+    iconContentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    enabled: Boolean = true,
+    badgeText: String? = null,
+    trailingContent: @Composable (() -> Unit)? = null
+) {
+    val contentAlpha = if (enabled) 1f else 0.5f
+    ListItem(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = enabled,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = LocalIndication.current,
+                onClick = onClick
+            )
+            .padding(vertical = 8.dp),
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(iconContainerColor.copy(alpha = contentAlpha)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconContentColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        },
+        headlineContent = {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = titleColor.copy(alpha = contentAlpha)
+                    )
+                    badgeText?.let {
+                        Badge { Text(it) }
+                    }
+                }
+                subtitle?.let {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = subtitleColor.copy(alpha = contentAlpha)
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            if (trailingContent != null) {
+                trailingContent()
+            } else {
+                TrailingArrowIcon()
+            }
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+    )
 }
 
 @Preview(showBackground = true)
