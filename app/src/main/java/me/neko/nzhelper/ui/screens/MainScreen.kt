@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Notifications
@@ -25,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,12 +38,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import me.neko.nzhelper.BuildConfig
 import me.neko.nzhelper.ui.BottomNavItem
 import me.neko.nzhelper.ui.dialog.CustomAppAlertDialog
@@ -52,14 +51,14 @@ import me.neko.nzhelper.ui.screens.statistics.StatisticsScreen
 import me.neko.nzhelper.ui.util.UpdateChecker
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-
+fun BottomNavigationBar(
+    pagerState: PagerState,
+    onPageSelected: (Int) -> Unit
+) {
     ShortNavigationBar(
         containerColor = MaterialTheme.colorScheme.background
     ) {
-        BottomNavItem.items.forEach { item ->
+        BottomNavItem.items.forEachIndexed { index, item ->
             ShortNavigationBarItem(
                 icon = {
                     Icon(
@@ -68,16 +67,8 @@ fun BottomNavigationBar(navController: NavController) {
                     )
                 },
                 label = { Text(item.title) },
-                selected = currentRoute == item.route,
-                onClick = {
-                    navController.navigate(item.route) {
-                        launchSingleTop = true
-                        restoreState = true
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                    }
-                }
+                selected = pagerState.currentPage == index,
+                onClick = { onPageSelected(index) }
             )
         }
     }
@@ -86,7 +77,6 @@ fun BottomNavigationBar(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    val navController = rememberNavController()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -180,21 +170,38 @@ fun MainScreen() {
         }
     }
 
+    // ── Pager 状态 ──
+    val pagerState = rememberPagerState(pageCount = { BottomNavItem.items.size })
+    val scope = rememberCoroutineScope()
+
     // ── UI ──
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            bottomBar = { BottomNavigationBar(navController) },
+            bottomBar = {
+                BottomNavigationBar(
+                    pagerState = pagerState,
+                    onPageSelected = { targetPage ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+                )
+            },
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = BottomNavItem.Home.route,
-                modifier = Modifier.padding(innerPadding)
-            ) {
-                composable(BottomNavItem.Home.route) { HomeScreen() }
-                composable(BottomNavItem.History.route) { HistoryScreen() }
-                composable(BottomNavItem.Settings.route) { SettingsScreen() }
-                composable(BottomNavItem.Statistics.route) { StatisticsScreen() }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                beyondViewportPageCount = BottomNavItem.items.size - 1
+            ) { page ->
+                when (BottomNavItem.items[page].route) {
+                    BottomNavItem.Home.route -> HomeScreen()
+                    BottomNavItem.Statistics.route -> StatisticsScreen()
+                    BottomNavItem.History.route -> HistoryScreen()
+                    BottomNavItem.Settings.route -> SettingsScreen()
+                }
             }
         }
 
