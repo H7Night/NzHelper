@@ -389,7 +389,7 @@ private fun calculateLatestInfo(sessions: List<Session>): LatestSessionInfo? {
     val latest = sessions.maxByOrNull { it.timestamp }!!
     val lastDate = latest.timestamp.toLocalDate()
     val today = LocalDateTime.now().toLocalDate()
-    val daysAgo = java.time.temporal.ChronoUnit.DAYS.between(lastDate, today)
+    val daysAgo = ChronoUnit.DAYS.between(lastDate, today)
 
     val displayDate = when (daysAgo) {
         0L -> "今天"
