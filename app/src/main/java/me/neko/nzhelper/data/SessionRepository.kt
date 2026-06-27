@@ -562,23 +562,17 @@ object SessionRepository {
     private fun encodeWebDavPath(path: String): String {
         if (path.isBlank()) return ""
         val normalized = if (path.startsWith("/")) path else "/$path"
-        return normalized.split("/").joinToString("/") { segment ->
+        return normalized.split("/").filter { it.isNotBlank() }.joinToString("/") { segment ->
             java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
-        }
+        }.let { if (it.isBlank()) "" else "/$it" }
     }
 
     private fun buildFullUrl(context: Context, fileName: String): String {
         val baseUrl = WebDavSettings.getUrl(context).trimEnd('/')
-        val remotePath = WebDavSettings.getRemotePath(context)
+        val remotePath = WebDavSettings.getRemotePath(context).trimEnd('/')
         val encodedPath = encodeWebDavPath(remotePath)
-        return "$baseUrl$encodedPath/$fileName"
-    }
-
-    private fun buildParentUrl(context: Context): String {
-        val baseUrl = WebDavSettings.getUrl(context).trimEnd('/')
-        val remotePath = WebDavSettings.getRemotePath(context)
-        val encodedPath = encodeWebDavPath(remotePath)
-        return "$baseUrl$encodedPath"
+        val finalFileName = if (fileName.startsWith("/")) fileName else "/$fileName"
+        return "$baseUrl$encodedPath$finalFileName"
     }
 
     private fun newOkHttpClient(): OkHttpClient {
@@ -589,20 +583,60 @@ object SessionRepository {
             .build()
     }
 
+    /**
+     * 支持递归创建多层目录
+     */
     private fun ensureRemoteDirectory(context: Context): Boolean {
-        val parentUrl = buildParentUrl(context)
-        val auth = buildAuthHeader(context) ?: return false
+        val baseUrl = WebDavSettings.getUrl(context).trimEnd('/')
+        val remotePath = WebDavSettings.getRemotePath(context).trim().trimEnd('/')
+        if (remotePath.isBlank() || remotePath == "/") return true
 
-        val mkcolRequest = Request.Builder()
-            .url(parentUrl)
-            .method("MKCOL", null)
+        val auth = buildAuthHeader(context) ?: return false
+        val client = newOkHttpClient()
+
+        val segments = remotePath.split("/").filter { it.isNotBlank() }
+        var currentUrl = baseUrl
+
+        for (segment in segments) {
+            val encodedSegment = java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
+            currentUrl = "$currentUrl/$encodedSegment"
+
+            val mkcolRequest = Request.Builder()
+                .url(currentUrl)
+                .method("MKCOL", null)
+                .header("Authorization", auth)
+                .build()
+
+            try {
+                client.newCall(mkcolRequest).execute().use { resp ->
+                    // 201 成功 / 405 已存在 / 301 重定向都视为可继续
+                    if (!(resp.code == 201 || resp.code == 405 || resp.code == 301)) {
+                        return false
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun tryPut(
+        url: String,
+        auth: String,
+        json: String,
+        mediaType: okhttp3.MediaType?
+    ): Int {
+        val body = json.toRequestBody(mediaType)
+        val request = Request.Builder()
+            .url(url)
+            .put(body)
             .header("Authorization", auth)
+            .header("Content-Type", "application/json")
             .build()
 
-        newOkHttpClient().newCall(mkcolRequest).execute().use { resp ->
-            // 201 成功 / 405 已存在 / 301 重定向都视为可继续
-            return resp.code == 201 || resp.code == 405 || resp.code == 301
-        }
+        return newOkHttpClient().newCall(request).execute().use { it.code }
     }
 
     /**
@@ -615,10 +649,6 @@ object SessionRepository {
                 return@withContext false to "未配置 WebDAV 服务器"
             }
             try {
-                if (!ensureRemoteDirectory(context)) {
-                    return@withContext false to "无法创建远程目录"
-                }
-
                 val sessions = loadSessions(context)
                 val recycleBin = loadRecycleBin(context)
 
@@ -631,31 +661,41 @@ object SessionRepository {
 
                 val json = gson.toJson(backupPayload)
                 val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val body = json.toRequestBody(mediaType)
 
                 val url = buildFullUrl(context, WEBDAV_BACKUP_FILENAME)
                 val auth = buildAuthHeader(context)
                     ?: return@withContext false to "未配置 WebDAV 服务器"
 
-                val request = Request.Builder()
-                    .url(url)
-                    .put(body)
-                    .header("Authorization", auth)
-                    .header("Content-Type", "application/json")
-                    .build()
+                var respCode = tryPut(url, auth, json, mediaType)
 
-                newOkHttpClient().newCall(request).execute().use { resp ->
-                    if (resp.isSuccessful) {
-                        val currentTime = System.currentTimeMillis()
-                        WebDavSettings.setLastBackupTime(context, currentTime)
+                if (respCode == 409) {
+                    if (ensureRemoteDirectory(context)) {
+                        val deleteRequest = Request.Builder()
+                            .url(url)
+                            .delete()
+                            .header("Authorization", auth)
+                            .build()
+                        try {
+                            newOkHttpClient().newCall(deleteRequest).execute().close()
+                        } catch (_: Exception) {
+                        }
 
-                        val timeStr = java.text.SimpleDateFormat(
-                            "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
-                        ).format(Date(currentTime))
-                        true to "备份成功 ($timeStr)"
+                        respCode = tryPut(url, auth, json, mediaType)
                     } else {
-                        false to "备份失败: HTTP ${resp.code}"
+                        return@withContext false to "无法创建远程目录"
                     }
+                }
+
+                if (respCode in 200..299) {
+                    val currentTime = System.currentTimeMillis()
+                    WebDavSettings.setLastBackupTime(context, currentTime)
+
+                    val timeStr = java.text.SimpleDateFormat(
+                        "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
+                    ).format(Date(currentTime))
+                    true to "备份成功 ($timeStr)"
+                } else {
+                    false to "备份失败: HTTP $respCode"
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -685,7 +725,12 @@ object SessionRepository {
 
                 newOkHttpClient().newCall(request).execute().use { resp ->
                     if (!resp.isSuccessful) {
-                        return@withContext false to "恢复失败: HTTP ${resp.code}"
+                        val msg = when (resp.code) {
+                            404, 403, 405 -> "恢复失败: 服务器上未找到备份文件 (HTTP ${resp.code})"
+                            401 -> "恢复失败: 认证失败 (HTTP 401)"
+                            else -> "恢复失败: HTTP ${resp.code}"
+                        }
+                        return@withContext false to msg
                     }
                     val body = resp.body.string()
 
