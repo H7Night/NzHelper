@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +38,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -75,6 +76,7 @@ import me.neko.nzhelper.ui.dialog.DetailsDialog
 import me.neko.nzhelper.ui.dialog.formatTime
 import me.neko.nzhelper.ui.screens.setting.CategorySettings
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -130,51 +132,34 @@ fun HistoryScreen(isActive: Boolean = false) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
-                        ) {
-                            Column {
-                                sessions.forEachIndexed { index, session ->
-                                    SessionHistoryItem(
-                                        session = session,
-                                        onClick = {
-                                            selectedSession = session
-                                            isViewingDetails = true
-                                        },
-                                        onEdit = {
-                                            selectedSession = session
-                                            isEditing = true
-                                            editFormState = SessionFormState(
-                                                remark = session.remark,
-                                                location = session.location,
-                                                watchedMovie = session.watchedMovie,
-                                                climax = session.climax,
-                                                rating = session.rating,
-                                                mood = session.mood,
-                                                props = session.props
-                                            )
-                                        },
-                                        onDelete = {
-                                            sessionToDelete = session
-                                            showDeleteConfirmDialog = true
-                                        }
-                                    )
-                                    if (index < sessions.size - 1) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(start = 72.dp),
-                                            thickness = 0.5.dp,
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(
-                                                alpha = 0.5f
-                                            )
-                                        )
-                                    }
-                                }
+                    items(sessions) { session ->
+                        SessionHistoryItem(
+                            session = session,
+                            onClick = {
+                                selectedSession = session
+                                isViewingDetails = true
+                            },
+                            onEdit = {
+                                selectedSession = session
+                                isEditing = true
+                                editFormState = SessionFormState(
+                                    remark = session.remark,
+                                    location = session.location,
+                                    watchedMovie = session.watchedMovie,
+                                    climax = session.climax,
+                                    rating = session.rating,
+                                    mood = session.mood,
+                                    props = session.props
+                                )
+                            },
+                            onDelete = {
+                                sessionToDelete = session
+                                showDeleteConfirmDialog = true
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -286,73 +271,85 @@ private fun SessionHistoryItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        // 左侧彩色图标容器
-        Box(
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Schedule,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+            // 左侧彩色图标容器
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
 
-        Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(16.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                session.timestamp.format(DateTimeFormatter.ofPattern("MM-dd HH:mm")),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    session.timestamp.format(
+                        DateTimeFormatter.ofPattern(
+                            "MM月dd日 HH:mm",
+                            Locale.CHINA
+                        )
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
                 Text(
                     formatTime(session.duration),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Normal
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (session.remark.isNotBlank()) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        "· ${session.remark}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        session.remark,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
                 }
             }
-        }
 
-        // 右侧操作区
-        Row(modifier = Modifier.padding(start = 8.dp)) {
-            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Rounded.Edit,
-                    contentDescription = "编辑",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
-                    modifier = Modifier.size(18.dp)
-                )
+            // 右侧操作区
+            Row(modifier = Modifier.padding(start = 8.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = "编辑",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
@@ -376,7 +373,7 @@ private fun SessionDetailDialog(
                 modifier = Modifier
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
                     text = "记录详情",
@@ -385,30 +382,45 @@ private fun SessionDetailDialog(
                     textAlign = TextAlign.Center
                 )
 
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f))
+                        .padding(vertical = 8.dp)
                 ) {
-                    Column {
-                        DetailRow(
-                            "时间",
-                            session.timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                            showDivider = true
-                        )
-                        DetailRow("时长", formatTime(session.duration), showDivider = true)
-                        DetailRow("地点", session.location.ifEmpty { "未记录" }, showDivider = true)
-                        DetailRow("备注", session.remark.ifEmpty { "无" }, showDivider = true)
-                        DetailRow("道具", session.props, showDivider = true)
-                        DetailRow("心情", session.mood, showDivider = true)
-                        DetailRow("评分", "%.1f".format(session.rating), showDivider = true)
-                        DetailRow(
-                            "小电影",
-                            if (session.watchedMovie) "是" else "否",
-                            showDivider = true
-                        )
-                        DetailRow("高潮", if (session.climax) "是" else "否", showDivider = false)
+                    DetailRow(
+                        "时间",
+                        session.timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    )
+                    DetailRow("时长", formatTime(session.duration))
+                    DetailRow("地点", session.location.ifEmpty { "未记录" })
+                    DetailRow("道具", session.props.ifEmpty { "无" })
+                    DetailRow("心情", session.mood.ifEmpty { "无" })
+                    DetailRow("评分", "%.1f".format(session.rating))
+                    DetailRow("小电影", if (session.watchedMovie) "是" else "否")
+                    DetailRow("高潮", if (session.climax) "是" else "否")
+                }
 
+                if (session.remark.isNotBlank()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f))
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            "备注",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            session.remark,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
 
@@ -442,33 +454,25 @@ private fun SessionDetailDialog(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String, showDivider: Boolean) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 16.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
-        }
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

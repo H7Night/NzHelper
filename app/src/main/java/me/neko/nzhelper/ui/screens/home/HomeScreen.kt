@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.data.Session
@@ -88,6 +89,8 @@ import me.neko.nzhelper.ui.dialog.formatTime
 import me.neko.nzhelper.ui.screens.setting.CategorySettings
 import me.neko.nzhelper.ui.service.TimerService
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(
     ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class,
@@ -172,14 +175,13 @@ fun HomeScreen(isActive: Boolean = false) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentAlignment = Alignment.Center
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(16.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 // 计时器主区域
                 item {
@@ -246,7 +248,7 @@ fun HomeScreen(isActive: Boolean = false) {
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
 
@@ -258,12 +260,12 @@ fun HomeScreen(isActive: Boolean = false) {
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            val recentSessions = sessions.take(10)  // 只取最近 10 条
+                            val recentSessions = sessions.take(5)
                             recentSessions.forEachIndexed { index, session ->
                                 SessionItem(session = session)
                                 if (index < recentSessions.size - 1) {
                                     HorizontalDivider(
-                                        modifier = Modifier.padding(start = 72.dp),
+                                        modifier = Modifier.padding(start = 76.dp, end = 16.dp),
                                         thickness = 0.5.dp,
                                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                     )
@@ -271,6 +273,7 @@ fun HomeScreen(isActive: Boolean = false) {
                             }
                         }
                     }
+
                     if (sessions.size > 10) {
                         item {
                             Row(
@@ -283,117 +286,155 @@ fun HomeScreen(isActive: Boolean = false) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "还有 ${sessions.size - 10} 条记录，去历史记录页面查看。",
+                                    text = "还有 ${sessions.size - 5} 条记录，去历史记录页面查看",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(
+                                    alpha = 0.5f
+                                )
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "(。・ω・。)",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    text = "暂无记录，开始第一次记录吧",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
                             }
                         }
                     }
                 }
             }
-
-            if (showConfirmDialog) {
-                ConfirmStopDialog(
-                    onDismiss = { showConfirmDialog = false },
-                    onConfirm = {
-                        showConfirmDialog = false
-                        showDetailsDialog = true
-                        context.startService(serviceIntent.apply {
-                            action = TimerService.ACTION_PAUSE
-                        })
-                    }
-                )
-            }
-
-            if (showResetConfirmDialog) {
-                ConfirmResetDialog(
-                    onDismiss = { showResetConfirmDialog = false },
-                    onConfirm = {
-                        showResetConfirmDialog = false
-                        context.startService(serviceIntent.apply {
-                            action = TimerService.ACTION_RESET
-                        })
-                    }
-                )
-            }
-
-            DetailsDialog(
-                show = showDetailsDialog,
-                formState = formState,
-                onFormStateChange = { formState = it },
-                onConfirm = {
-                    val now = LocalDateTime.now()
-                    val session = Session(
-                        timestamp = now,
-                        duration = elapsedSeconds,
-                        remark = formState.remark,
-                        location = formState.location,
-                        watchedMovie = formState.watchedMovie,
-                        climax = formState.climax,
-                        rating = formState.rating,
-                        mood = formState.mood,
-                        props = formState.props
-                    )
-                    sessions.add(0, session)
-                    scope.launch { SessionRepository.saveSessions(context, sessions) }
-
-                    formState = SessionFormState()
-                    showDetailsDialog = false
-                    context.startService(serviceIntent.apply { action = TimerService.ACTION_STOP })
-                },
-                onDismiss = {
-                    showDetailsDialog = false
-                    context.startService(serviceIntent.apply { action = TimerService.ACTION_START })
-                },
-                locationList = CategorySettings.getLocations(context),
-                propsList = CategorySettings.getProps(context),
-                moodList = CategorySettings.getMoods(context)
-            )
-
-            DetailsDialog(
-                show = showManualAddDialog,
-                formState = formState,
-                onFormStateChange = { formState = it },
-                showDurationField = true,
-                title = "手动添加记录",
-                onConfirm = {
-                    val duration = formState.manualDurationSeconds
-                    if (duration <= 0) {
-                        Toast.makeText(context, "请输入时长", Toast.LENGTH_SHORT).show()
-                        return@DetailsDialog
-                    }
-                    val timestamp = try {
-                        formState.toLocalDateTime()
-                    } catch (_: Exception) {
-                        Toast.makeText(context, "日期时间无效，请重新选择", Toast.LENGTH_SHORT)
-                            .show()
-                        return@DetailsDialog
-                    }
-                    val session = Session(
-                        timestamp = timestamp,
-                        duration = duration,
-                        remark = formState.remark,
-                        location = formState.location,
-                        watchedMovie = formState.watchedMovie,
-                        climax = formState.climax,
-                        rating = formState.rating,
-                        mood = formState.mood,
-                        props = formState.props
-                    )
-                    sessions.add(0, session)
-                    scope.launch { SessionRepository.saveSessions(context, sessions) }
-
-                    formState = SessionFormState()
-                    showManualAddDialog = false
-                },
-                onDismiss = { showManualAddDialog = false },
-                locationList = CategorySettings.getLocations(context),
-                propsList = CategorySettings.getProps(context),
-                moodList = CategorySettings.getMoods(context)
-            )
         }
     }
+
+    if (showConfirmDialog) {
+        ConfirmStopDialog(
+            onDismiss = { showConfirmDialog = false },
+            onConfirm = {
+                showConfirmDialog = false
+                showDetailsDialog = true
+                context.startService(serviceIntent.apply {
+                    action = TimerService.ACTION_PAUSE
+                })
+            }
+        )
+    }
+
+    if (showResetConfirmDialog) {
+        ConfirmResetDialog(
+            onDismiss = { showResetConfirmDialog = false },
+            onConfirm = {
+                showResetConfirmDialog = false
+                context.startService(serviceIntent.apply {
+                    action = TimerService.ACTION_RESET
+                })
+            }
+        )
+    }
+
+    DetailsDialog(
+        show = showDetailsDialog,
+        formState = formState,
+        onFormStateChange = { formState = it },
+        onConfirm = {
+            val now = LocalDateTime.now()
+            val session = Session(
+                timestamp = now,
+                duration = elapsedSeconds,
+                remark = formState.remark,
+                location = formState.location,
+                watchedMovie = formState.watchedMovie,
+                climax = formState.climax,
+                rating = formState.rating,
+                mood = formState.mood,
+                props = formState.props
+            )
+            sessions.add(0, session)
+            scope.launch { SessionRepository.saveSessions(context, sessions) }
+
+            formState = SessionFormState()
+            showDetailsDialog = false
+            context.startService(serviceIntent.apply { action = TimerService.ACTION_STOP })
+        },
+        onDismiss = {
+            showDetailsDialog = false
+            context.startService(serviceIntent.apply { action = TimerService.ACTION_START })
+        },
+        locationList = CategorySettings.getLocations(context),
+        propsList = CategorySettings.getProps(context),
+        moodList = CategorySettings.getMoods(context)
+    )
+
+    DetailsDialog(
+        show = showManualAddDialog,
+        formState = formState,
+        onFormStateChange = { formState = it },
+        showDurationField = true,
+        title = "手动添加记录",
+        onConfirm = {
+            val duration = formState.manualDurationSeconds
+            if (duration <= 0) {
+                Toast.makeText(context, "请输入时长", Toast.LENGTH_SHORT).show()
+                return@DetailsDialog
+            }
+            val timestamp = try {
+                formState.toLocalDateTime()
+            } catch (_: Exception) {
+                Toast.makeText(context, "日期时间无效，请重新选择", Toast.LENGTH_SHORT)
+                    .show()
+                return@DetailsDialog
+            }
+            val session = Session(
+                timestamp = timestamp,
+                duration = duration,
+                remark = formState.remark,
+                location = formState.location,
+                watchedMovie = formState.watchedMovie,
+                climax = formState.climax,
+                rating = formState.rating,
+                mood = formState.mood,
+                props = formState.props
+            )
+            sessions.add(0, session)
+            scope.launch { SessionRepository.saveSessions(context, sessions) }
+
+            formState = SessionFormState()
+            showManualAddDialog = false
+        },
+        onDismiss = { showManualAddDialog = false },
+        locationList = CategorySettings.getLocations(context),
+        propsList = CategorySettings.getProps(context),
+        moodList = CategorySettings.getMoods(context)
+    )
 }
 
 @Composable
@@ -519,8 +560,10 @@ private fun TimerCard(
 
             Text(
                 text = formatTime(elapsedSeconds),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 2.sp
+                ),
                 color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
 
@@ -563,7 +606,8 @@ private fun TimerCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (isRunning) "暂停" else "开始"
+                        text = if (isRunning) "暂停" else "开始",
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
 
@@ -600,12 +644,15 @@ private fun SessionItem(session: Session) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -618,12 +665,16 @@ private fun SessionItem(session: Session) {
 
             Spacer(Modifier.width(16.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "${session.timestamp.monthValue}月${session.timestamp.dayOfMonth}日 ${
-                        session.timestamp.hour
-                    }:${String.format("%02d", session.timestamp.minute)}",
-                    style = MaterialTheme.typography.bodyLarge
+                    text = session.timestamp.format(
+                        DateTimeFormatter.ofPattern(
+                            "MM月dd日 HH:mm",
+                            Locale.CHINA
+                        )
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
                 )
                 if (session.remark.isNotEmpty()) {
                     Text(
@@ -640,8 +691,8 @@ private fun SessionItem(session: Session) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = formatTime(session.duration),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.width(8.dp))
             Icon(

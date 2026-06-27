@@ -1,6 +1,9 @@
 package me.neko.nzhelper.ui.screens.statistics
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,22 +15,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -53,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +58,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -71,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import me.neko.nzhelper.data.Session
 import me.neko.nzhelper.data.SessionRepository
@@ -107,7 +108,6 @@ fun StatisticsScreen(isActive: Boolean = false) {
         derivedStateOf { calculatePeriodData(sessions, currentTime, PeriodType.YEAR) }
     }
 
-    // 总体统计数据
     val totalStats by remember(sessions) {
         derivedStateOf {
             if (sessions.isEmpty()) {
@@ -169,55 +169,36 @@ fun StatisticsScreen(isActive: Boolean = false) {
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 顶部卡片区域
                     item {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            LatestSessionCard(
-                                latestInfo = latestInfo,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            TotalStatCard(
-                                stats = totalStats,
-                                sessions = sessions,
-                                onPeriodClick = { type, label ->
-                                    selectedOverview = calculatePeriodOverview(
-                                        sessions, currentTime, type, label
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        LatestSessionCard(
+                            latestInfo = latestInfo,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-
                     item {
-                        Card(
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                            )
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                PeriodSection(title = "本周", data = weekData)
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        TotalStatCard(
+                            stats = totalStats,
+                            sessions = sessions,
+                            onPeriodClick = { type, label ->
+                                selectedOverview = calculatePeriodOverview(
+                                    sessions, currentTime, type, label
                                 )
-                                PeriodSection(title = "本月", data = monthData)
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 16.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
-                                PeriodSection(title = "今年", data = yearData)
-                            }
-                        }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-
-                    item { Spacer(modifier = Modifier.height(32.dp)) }
+                    item {
+                        PeriodChartCard(
+                            weekData = weekData,
+                            monthData = monthData,
+                            yearData = yearData,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
@@ -284,9 +265,6 @@ private data class PeriodOverview(
     val climaxComparison: String = ""
 )
 
-/**
- * 统一的周期数据计算
- */
 private fun calculatePeriodData(
     sessions: List<Session>,
     now: LocalDateTime,
@@ -499,7 +477,6 @@ private fun calculatePeriodOverview(
         )
     }
 
-    // 获取上一周期时间范围
     val startCurrent = when (type) {
         PeriodType.WEEK -> now.minusDays(now.dayOfWeek.value.toLong() - 1).toLocalDate()
             .atStartOfDay()
@@ -515,7 +492,6 @@ private fun calculatePeriodOverview(
     val prevSessions = sessions.filter { it.timestamp in startPrev..<startCurrent }
     val prevCount = prevSessions.size
 
-    // 次数对比
     val countComparison = if (prevCount == 0) {
         "${prevLabel}无记录"
     } else {
@@ -527,7 +503,6 @@ private fun calculatePeriodOverview(
         }
     }
 
-    // 总时长对比
     val totalDuration = filtered.sumOf { it.duration }
     val prevTotalDuration = prevSessions.sumOf { it.duration }
     val durationComparison = if (prevCount == 0) {
@@ -665,59 +640,300 @@ private fun calculatePeriodOverview(
     )
 }
 
-// --- UI 组件 ---
-@Composable
-private fun PeriodSection(
-    title: String,
-    data: PeriodData
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+// ===================== UI 组件 =====================
 
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        formatDuration(data.totalDurationSeconds),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+@Composable
+private fun PeriodChartCard(
+    weekData: PeriodData,
+    monthData: PeriodData,
+    yearData: PeriodData,
+    modifier: Modifier = Modifier
+) {
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val periodDataList = listOf(weekData, monthData, yearData)
+    val tabLabels = listOf("本周", "本月", "今年")
+    val currentData = periodDataList[selectedTabIndex]
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                tabLabels.forEachIndexed { index, label ->
+                    val isSelected = selectedTabIndex == index
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.surfaceContainerLowest
+                                else Color.Transparent
+                            )
+                            .clickable { selectedTabIndex = index }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── 统计概览 ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column {
                     Text(
                         "总时长",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        formatDuration(currentData.totalDurationSeconds),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        if (data.totalDurationSeconds > 0) "%.1f分".format(data.avgDurationMinutes) else "0分",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Medium,
-                        color = if (data.totalDurationSeconds > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "平均",
-                        style = MaterialTheme.typography.labelSmall,
+                        "平均时长",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        if (currentData.totalDurationSeconds > 0)
+                            "%.1f 分钟".format(currentData.avgDurationMinutes)
+                        else "—",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (currentData.totalDurationSeconds > 0)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── 图表 ──
+            BarChart(data = currentData.chartData)
         }
+    }
+}
 
-        Spacer(Modifier.height(24.dp))
+@Composable
+private fun BarChart(
+    data: List<Pair<String, Float>>,
+    modifier: Modifier = Modifier,
+    chartHeight: Dp = 160.dp
+) {
+    if (data.isEmpty() || data.all { it.second <= 0f }) {
+        Box(
+            modifier = modifier.height(chartHeight),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "暂无数据",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
 
-        // 图表
-        BarChart(data = data.chartData)
+    val rawMax = data.maxOf { it.second }
+    val maxValue = if (rawMax <= 0f) 1f else rawMax * 1.2f
+
+    val primary = MaterialTheme.colorScheme.primary
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val labelStyle = MaterialTheme.typography.labelSmall
+
+    val animationProgress = remember(data) { Animatable(0f) }
+    LaunchedEffect(data) {
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+        )
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .width(28.dp)
+                    .height(chartHeight)
+            ) {
+                Text(
+                    "${maxValue.toInt()}",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+                Text(
+                    "${(maxValue / 2).toInt()}",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+                Text(
+                    "0",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.25f),
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
+
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            ) {
+                val barCount = data.size
+                val spacing = when {
+                    barCount > 20 -> 2.dp
+                    barCount > 10 -> 4.dp
+                    else -> 6.dp
+                }
+                val totalSpacing = spacing * (barCount - 1)
+                val availableWidth = maxWidth - totalSpacing
+                val barWidth = (availableWidth / barCount).coerceIn(2.dp, 32.dp)
+                val showValueLabels = barCount <= 12
+
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(chartHeight)
+                            .drawBehind {
+                                val gridCount = 4
+                                for (i in 0..gridCount) {
+                                    val y = size.height * i / gridCount
+                                    drawLine(
+                                        color = outlineVariant.copy(alpha = 0.2f),
+                                        start = Offset(0f, y),
+                                        end = Offset(size.width, y),
+                                        strokeWidth = 1.dp.toPx()
+                                    )
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                spacing,
+                                Alignment.CenterHorizontally
+                            ),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            data.forEach { (_, value) ->
+                                val ratio = (value / maxValue).coerceIn(0f, 1f)
+                                val animatedRatio = ratio * animationProgress.value
+                                val barHeight = chartHeight * animatedRatio
+                                val isMax = value == rawMax && value > 0f
+                                val hasValue = value > 0f
+
+                                Column(
+                                    modifier = Modifier.width(barWidth),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Bottom
+                                ) {
+                                    if (showValueLabels && hasValue) {
+                                        Text(
+                                            text = value.toInt().toString(),
+                                            style = labelStyle,
+                                            fontSize = 9.sp,
+                                            color = if (isMax) primary
+                                            else onSurfaceVariant.copy(alpha = 0.6f),
+                                            fontWeight = if (isMax) FontWeight.SemiBold
+                                            else FontWeight.Normal,
+                                            maxLines = 1
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                    } else if (showValueLabels) {
+                                        Spacer(Modifier.height(13.dp))
+                                    }
+
+                                    val cornerRadius = minOf(6.dp, barWidth / 2)
+                                    Box(
+                                        modifier = Modifier
+                                            .width(barWidth)
+                                            .height(barHeight.coerceAtLeast(if (hasValue) 2.dp else 0.dp))
+                                            .clip(
+                                                RoundedCornerShape(
+                                                    topStart = cornerRadius,
+                                                    topEnd = cornerRadius
+                                                )
+                                            )
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = if (isMax) {
+                                                        listOf(primary, primary.copy(alpha = 0.85f))
+                                                    } else {
+                                                        listOf(
+                                                            primary.copy(alpha = 0.6f),
+                                                            primary.copy(alpha = 0.4f)
+                                                        )
+                                                    }
+                                                )
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            spacing,
+                            Alignment.CenterHorizontally
+                        )
+                    ) {
+                        data.forEach { (label, value) ->
+                            val isMax = value == rawMax && value > 0f
+                            Text(
+                                text = label,
+                                style = labelStyle,
+                                fontSize = if (barCount > 10) 9.sp else 10.sp,
+                                color = if (isMax) primary
+                                else onSurfaceVariant.copy(alpha = 0.6f),
+                                fontWeight = if (isMax) FontWeight.SemiBold
+                                else FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                modifier = Modifier.width(barWidth)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -763,8 +979,8 @@ private fun TotalStatCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -798,7 +1014,6 @@ private fun TotalStatCard(
                     style = MaterialTheme.typography.displaySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
-
                 val avgText =
                     if (stats.totalCount > 0) "%.1f 分钟".format(stats.avgMinutes) else "0 分钟"
                 Text(
@@ -810,12 +1025,12 @@ private fun TotalStatCard(
 
             if (statusText.isNotEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.tertiaryContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -871,9 +1086,9 @@ private fun PeriodStatCard(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 8.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -914,12 +1129,11 @@ private fun LatestSessionCard(
     val contentColor =
         if (isError) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
     val contentColorVariant = contentColor.copy(alpha = 0.8f)
-
-    val overlayColor = contentColor.copy(alpha = 0.15f)
+    val overlayColor = contentColor.copy(alpha = 0.12f)
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
         )
@@ -931,8 +1145,7 @@ private fun LatestSessionCard(
         ) {
             if (latestInfo == null) {
                 Box(
-                    modifier = Modifier
-                        .padding(32.dp),
+                    modifier = Modifier.padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -945,13 +1158,13 @@ private fun LatestSessionCard(
                 Column {
                     Row(
                         modifier = Modifier
-                            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+                            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(14.dp))
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(overlayColor),
                             contentAlignment = Alignment.Center
                         ) {
@@ -962,7 +1175,7 @@ private fun LatestSessionCard(
                             )
                         }
 
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(14.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -983,7 +1196,7 @@ private fun LatestSessionCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(overlayColor)
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -1006,7 +1219,6 @@ private fun PeriodOverviewDialog(
     onDismiss: () -> Unit
 ) {
     val density = LocalDensity.current
-
     val screenHeight = with(density) {
         LocalWindowInfo.current.containerSize.height.toDp()
     }
@@ -1079,9 +1291,7 @@ private fun PeriodOverviewDialog(
                                         .size(40.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(
-                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(
-                                                alpha = 0.12f
-                                            )
+                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -1104,9 +1314,7 @@ private fun PeriodOverviewDialog(
                                     Spacer(Modifier.height(2.dp))
                                     Text(
                                         text = "${overview.longestSessionDisplayDate} · ${
-                                            formatDuration(
-                                                overview.longestDurationSeconds
-                                            )
+                                            formatDuration(overview.longestDurationSeconds)
                                         }",
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1233,164 +1441,7 @@ private fun OverviewDetailRow(
     }
 }
 
-// --- 通用图表组件 ---
-@Composable
-private fun BarChart(
-    data: List<Pair<String, Float>>,
-    modifier: Modifier = Modifier,
-    chartHeight: Dp = 160.dp,
-    minBarWidth: Dp = 16.dp,
-    maxBarWidth: Dp = 40.dp,
-    spacing: Dp = 12.dp
-) {
-    if (data.isEmpty()) {
-        Box(
-            modifier = modifier.height(160.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("无数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        return
-    }
-
-    val maxValue = data.maxOf { it.second }.coerceAtLeast(1f)
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(chartHeight + 40.dp) // 给 X 轴留空间
-    ) {
-        YAxis(
-            maxValue = maxValue,
-            modifier = Modifier
-                .wrapContentWidth()
-                .fillMaxHeight()
-        )
-
-        @Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-        ) {
-            // 动态计算柱子宽度
-            val totalSpacing = spacing * (data.size - 1)
-            val availableWidth = maxWidth - totalSpacing
-            val idealBarWidth = availableWidth / data.size
-            val barWidth = idealBarWidth.coerceIn(minBarWidth, maxBarWidth)
-
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(spacing)
-            ) {
-                items(data) { (date, value) ->
-                    BarItem(
-                        value = value,
-                        maxValue = maxValue,
-                        date = date,
-                        barWidth = barWidth,
-                        chartHeight = chartHeight
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun YAxis(
-    maxValue: Float,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .padding(bottom = 28.dp, end = 8.dp), // 底部留给 X 轴
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.End
-    ) {
-        Text(
-            "${maxValue.toInt()}m", // 缩写单位
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        )
-        Text(
-            "${(maxValue / 2).toInt()}m",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-        )
-        Text(
-            "0",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-        )
-    }
-}
-
-@Composable
-private fun BarItem(
-    value: Float,
-    maxValue: Float,
-    date: String,
-    barWidth: Dp,
-    chartHeight: Dp
-) {
-    val ratio = value / maxValue
-    val barHeight = chartHeight * ratio
-
-    val barColor = MaterialTheme.colorScheme.primary
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(barColor, barColor.copy(alpha = 0.6f))
-    )
-
-    Column(
-        modifier = Modifier.width(barWidth),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .height(chartHeight)
-                .fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .height(if (barHeight > 0.dp) barHeight else 0.dp) // 防止负值
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .background(gradientBrush)
-            )
-
-            // 数值显示逻辑：柱子太短时显示在上方
-            val showInside = barHeight > 36.dp
-
-            if (value > 0f) {
-                Text(
-                    text = value.toInt().toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (showInside) Color.White else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(
-                            y = if (showInside) -barHeight / 2 else -barHeight - 8.dp
-                        )
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // 日期（X 轴）- 颜色减淡
-        Text(
-            text = date,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-        )
-    }
-}
+// --- 工具函数 ---
 
 private fun formatDuration(totalSeconds: Int): String {
     val hours = totalSeconds / 3600

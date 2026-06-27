@@ -1,7 +1,6 @@
 package me.neko.nzhelper.ui.dialog
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -18,14 +17,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedFilterChip
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -41,7 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,7 +76,7 @@ fun DetailsDialog(
     ) {
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainerLowest,
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = RoundedCornerShape(28.dp),
             tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth(0.92f)
@@ -105,6 +103,11 @@ fun DetailsDialog(
                     DateTimeInputSection(
                         formState = formState,
                         onFormStateChange = onFormStateChange
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                 }
 
@@ -193,13 +196,14 @@ private fun SwitchSection(
         Text(
             "状态",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ElevatedFilterChip(
+            FilterChip(
                 selected = watchedMovie,
                 onClick = { onWatchedMovieChange(!watchedMovie) },
                 label = { Text("小电影") },
@@ -214,7 +218,7 @@ private fun SwitchSection(
                 } else null,
                 modifier = Modifier.weight(1f)
             )
-            ElevatedFilterChip(
+            FilterChip(
                 selected = climax,
                 onClick = { onClimaxChange(!climax) },
                 label = { Text("高潮") },
@@ -238,11 +242,12 @@ private fun InputSection(
     title: String,
     content: @Composable () -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
         content()
     }
@@ -259,39 +264,19 @@ private fun SelectionSection(
         Text(
             title,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items.forEach { item ->
-                AssistChip(
+                FilterChip(
+                    selected = selected == item,
                     onClick = { onSelected(item) },
-                    label = { Text(item) },
-                    border = if (selected == item) {
-                        null
-                    } else {
-                        BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = if (selected == item)
-                            MaterialTheme.colorScheme.secondaryContainer
-                        else
-                            MaterialTheme.colorScheme.surface
-                    ),
-                    leadingIcon = if (selected == item) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Done,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    } else null
+                    label = { Text(item) }
                 )
             }
         }
@@ -312,7 +297,8 @@ private fun RatingSection(
             Text(
                 "评分",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "%.1f".format(rating),
@@ -342,11 +328,13 @@ private fun DurationInputSection(
         Text(
             "时长",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             OutlinedTextField(
                 value = formState.durationHour,
@@ -358,7 +346,12 @@ private fun DurationInputSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                textStyle = TextStyle(textAlign = TextAlign.Center)
+                textStyle = MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center)
+            )
+            Text(
+                ":",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             OutlinedTextField(
                 value = formState.durationMinute,
@@ -370,7 +363,12 @@ private fun DurationInputSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                textStyle = TextStyle(textAlign = TextAlign.Center)
+                textStyle = MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center)
+            )
+            Text(
+                ":",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             OutlinedTextField(
                 value = formState.durationSecond,
@@ -382,13 +380,14 @@ private fun DurationInputSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                textStyle = TextStyle(textAlign = TextAlign.Center)
+                textStyle = MaterialTheme.typography.titleLarge.copy(textAlign = TextAlign.Center)
             )
         }
         Text(
             text = "合计：${formatTime(formState.manualDurationSeconds)}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.align(Alignment.End)
         )
     }
@@ -407,7 +406,8 @@ private fun DateTimeInputSection(
         Text(
             "日期时间",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
         )
 
         Row(
@@ -417,7 +417,10 @@ private fun DateTimeInputSection(
             OutlinedButton(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
             ) {
                 Icon(
                     Icons.Outlined.CalendarMonth,
@@ -426,8 +429,7 @@ private fun DateTimeInputSection(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "%04d-%02d-%02d".format(
-                        formState.manualYear,
+                    "%02d-%02d".format(
                         formState.manualMonth,
                         formState.manualDay
                     )
@@ -437,7 +439,10 @@ private fun DateTimeInputSection(
             OutlinedButton(
                 onClick = { showTimePicker = true },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
             ) {
                 Icon(
                     Icons.Outlined.Schedule,
