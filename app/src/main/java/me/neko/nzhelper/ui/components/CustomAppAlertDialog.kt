@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.dialog
+package me.neko.nzhelper.ui.components
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth

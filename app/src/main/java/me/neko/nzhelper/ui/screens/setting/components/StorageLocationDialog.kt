@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens.setting
+package me.neko.nzhelper.ui.screens.setting.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically

@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens.setting
+package me.neko.nzhelper.ui.screens.setting.components
 
 import android.Manifest
 import android.content.Context

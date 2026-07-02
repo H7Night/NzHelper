@@ -1,5 +1,7 @@
-package me.neko.nzhelper.ui.dialog
+package me.neko.nzhelper.ui.components
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,9 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.neko.nzhelper.data.SessionFormState
+import me.neko.nzhelper.ui.util.formatTime
 import java.time.LocalDate
 import java.time.LocalTime
-import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -458,7 +460,7 @@ private fun DateTimeInputSection(
     }
 
     if (showDatePicker) {
-        android.app.DatePickerDialog(
+        DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
                 val selectedDate = LocalDate.of(year, month + 1, dayOfMonth)
@@ -484,7 +486,7 @@ private fun DateTimeInputSection(
     }
 
     if (showTimePicker) {
-        android.app.TimePickerDialog(
+        TimePickerDialog(
             context,
             { _, hourOfDay, minute ->
                 val selectedDate =
@@ -509,16 +511,5 @@ private fun DateTimeInputSection(
         ).apply {
             setOnCancelListener { showTimePicker = false }
         }.show()
-    }
-}
-
-// 通用工具函数
-fun formatTime(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return buildString {
-        if (hours > 0) append(String.format(Locale.getDefault(), "%02d:", hours))
-        append(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds))
     }
 }

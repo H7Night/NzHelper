@@ -10,30 +10,16 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AutoDelete
 import androidx.compose.material.icons.outlined.Category
@@ -50,17 +36,10 @@ import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Upload
-import androidx.compose.material3.Badge
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -78,11 +57,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -101,15 +76,25 @@ import me.neko.nzhelper.data.Session
 import me.neko.nzhelper.data.SessionRepository
 import me.neko.nzhelper.ui.activity.AboutActivity
 import me.neko.nzhelper.ui.activity.RecycleBinActivity
-import me.neko.nzhelper.ui.screens.history.ConfirmDialog
+import me.neko.nzhelper.ui.components.ConfirmDialog
 import me.neko.nzhelper.ui.screens.lock.AppLockManager
+import me.neko.nzhelper.ui.screens.setting.components.CategoryManageDialog
+import me.neko.nzhelper.ui.screens.setting.components.CategorySettings
+import me.neko.nzhelper.ui.screens.setting.components.RecycleBinSettings
+import me.neko.nzhelper.ui.screens.setting.components.SettingsCard
+import me.neko.nzhelper.ui.screens.setting.components.SettingsDivider
+import me.neko.nzhelper.ui.screens.setting.components.SettingsItem
+import me.neko.nzhelper.ui.screens.setting.components.StorageLocationDialog
+import me.neko.nzhelper.ui.screens.setting.components.StorageSettings
+import me.neko.nzhelper.ui.screens.setting.components.TrailingArrowIcon
+import me.neko.nzhelper.ui.screens.setting.components.WebDavSettings
+import me.neko.nzhelper.ui.screens.setting.components.WebDavSettingsDialog
 import java.io.OutputStreamWriter
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SettingsScreen(
-) {
+fun SettingsScreen() {
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val context = LocalContext.current
@@ -730,118 +715,6 @@ fun SettingsScreen(
             webDavLastBackup = WebDavSettings.getLastBackupTime(context)
         })
     }
-}
-
-@Composable
-private fun TrailingArrowIcon() {
-    Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.size(20.dp)
-    )
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 72.dp),
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    )
-}
-
-@Composable
-private fun SettingsCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
-private fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    iconContainerColor: Color,
-    iconContentColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    titleColor: Color = MaterialTheme.colorScheme.onSurface,
-    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    enabled: Boolean = true,
-    badgeText: String? = null,
-    trailingContent: @Composable (() -> Unit)? = null
-) {
-    val contentAlpha = if (enabled) 1f else 0.5f
-    ListItem(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(
-                enabled = enabled,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = LocalIndication.current,
-                onClick = onClick
-            )
-            .padding(vertical = 8.dp),
-        leadingContent = {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconContainerColor.copy(alpha = contentAlpha)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconContentColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        },
-        headlineContent = {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = titleColor.copy(alpha = contentAlpha)
-                    )
-                    badgeText?.let {
-                        Badge { Text(it) }
-                    }
-                }
-                subtitle?.let {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = subtitleColor.copy(alpha = contentAlpha)
-                    )
-                }
-            }
-        },
-        trailingContent = {
-            if (trailingContent != null) {
-                trailingContent()
-            } else {
-                TrailingArrowIcon()
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-    )
 }
 
 @Preview(showBackground = true)

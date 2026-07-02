@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens.setting
+package me.neko.nzhelper.ui.screens.setting.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

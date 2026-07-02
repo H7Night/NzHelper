@@ -41,7 +41,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.BuildConfig
 import me.neko.nzhelper.ui.BottomNavItem
-import me.neko.nzhelper.ui.dialog.CustomAppAlertDialog
+import me.neko.nzhelper.ui.components.CustomAppAlertDialog
 import me.neko.nzhelper.ui.screens.history.HistoryScreen
 import me.neko.nzhelper.ui.screens.home.HomeScreen
 import me.neko.nzhelper.ui.screens.lock.AppLockManager

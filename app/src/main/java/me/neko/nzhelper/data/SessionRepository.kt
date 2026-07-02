@@ -9,9 +9,9 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.neko.nzhelper.NzApplication
-import me.neko.nzhelper.ui.screens.setting.RecycleBinSettings
-import me.neko.nzhelper.ui.screens.setting.StorageSettings
-import me.neko.nzhelper.ui.screens.setting.WebDavSettings
+import me.neko.nzhelper.ui.screens.setting.components.RecycleBinSettings
+import me.neko.nzhelper.ui.screens.setting.components.StorageSettings
+import me.neko.nzhelper.ui.screens.setting.components.WebDavSettings
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request

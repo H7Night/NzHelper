@@ -1,8 +1,7 @@
-package me.neko.nzhelper.ui.screens.setting
+package me.neko.nzhelper.ui.screens.setting.components
 
 import android.content.Context
 import androidx.core.content.edit
-
 import org.json.JSONArray
 
 object CategorySettings {

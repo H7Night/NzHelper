@@ -1,4 +1,4 @@
-package me.neko.nzhelper.ui.screens.setting
+package me.neko.nzhelper.ui.screens.setting.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,7 +35,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.data.SessionRepository
-import me.neko.nzhelper.ui.screens.history.ConfirmDialog
+import me.neko.nzhelper.ui.components.ConfirmDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

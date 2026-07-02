@@ -58,7 +58,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.data.RecycleBinItem
 import me.neko.nzhelper.data.SessionRepository
-import me.neko.nzhelper.ui.screens.history.ConfirmDialog
+import me.neko.nzhelper.ui.components.ConfirmDialog
+import me.neko.nzhelper.ui.screens.setting.components.RecycleBinSettings
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
