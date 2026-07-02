@@ -1,6 +1,5 @@
 package me.neko.nzhelper.ui.screens.home
 
-import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -8,16 +7,17 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,12 +27,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.Replay
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -47,7 +47,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -71,11 +70,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -240,18 +239,7 @@ fun HomeScreen(isActive: Boolean = false) {
                     }
                 }
 
-                // 历史记录列表
                 if (sessions.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "近期记录",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
                     item {
                         Card(
                             shape = RoundedCornerShape(24.dp),
@@ -260,43 +248,50 @@ fun HomeScreen(isActive: Boolean = false) {
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            val recentSessions = sessions.take(5)
-                            recentSessions.forEachIndexed { index, session ->
-                                SessionItem(session = session)
-                                if (index < recentSessions.size - 1) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 76.dp, end = 16.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                val recentSessions = sessions.take(8)
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Timeline,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "活动时间轴",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "最近 ${recentSessions.size} 次记录",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(20.dp))
+
+                                recentSessions.forEachIndexed { index, session ->
+                                    TimelineItem(
+                                        session = session,
+                                        isLast = index == recentSessions.lastIndex
                                     )
                                 }
-                            }
-                        }
-                    }
-
-                    if (sessions.size > 10) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { }
-                                    .padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "还有 ${sessions.size - 5} 条记录，去历史记录页面查看",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
                             }
                         }
                     }
@@ -632,76 +627,141 @@ private fun TimerCard(
 }
 
 /**
- * 历史记录条目
+ * 历史记录时间轴条目
  */
-@SuppressLint("DefaultLocale")
 @Composable
-private fun SessionItem(session: Session) {
+private fun TimelineItem(
+    session: Session,
+    isLast: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.outlineVariant
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("M月d日 EEE", Locale.CHINA) }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA) }
+
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .height(IntrinsicSize.Min)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+        Column(
+            modifier = Modifier
+                .width(28.dp)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
-                contentAlignment = Alignment.Center
+                    .padding(top = 4.dp)
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(primary)
+            )
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(1.5.dp)
+                        .fillMaxHeight()
+                        .background(outline.copy(alpha = 0.5f))
+                )
+            }
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (isLast) 0.dp else 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Schedule,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp)
+                Text(
+                    text = session.timestamp.format(dateFormatter),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = formatTime(session.duration),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = primary,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.height(4.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = session.timestamp.format(
-                        DateTimeFormatter.ofPattern(
-                            "MM月dd日 HH:mm",
-                            Locale.CHINA
-                        )
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    text = session.timestamp.format(timeFormatter),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = onSurfaceVariant
                 )
-                if (session.remark.isNotEmpty()) {
-                    Text(
-                        text = session.remark,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                if (session.mood.isNotEmpty()) {
+                    TimelineTag(
+                        session.mood,
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                if (session.props.isNotEmpty()) {
+                    TimelineTag(
+                        session.props,
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+                if (session.watchedMovie) {
+                    TimelineTag(
+                        "观影",
+                        MaterialTheme.colorScheme.tertiaryContainer,
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+                if (session.climax) {
+                    TimelineTag(
+                        "高潮",
+                        MaterialTheme.colorScheme.errorContainer,
+                        MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
         }
+    }
+}
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = formatTime(session.duration),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
+/**
+ * 时间轴内的小标签
+ */
+@Composable
+private fun TimelineTag(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            color = textColor,
+            maxLines = 1
+        )
     }
 }
 

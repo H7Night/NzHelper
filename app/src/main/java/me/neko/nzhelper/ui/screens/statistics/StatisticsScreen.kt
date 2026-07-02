@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,10 +28,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.DonutLarge
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
@@ -60,14 +66,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -76,6 +88,7 @@ import androidx.compose.ui.window.Dialog
 import me.neko.nzhelper.data.Session
 import me.neko.nzhelper.data.SessionRepository
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -198,6 +211,27 @@ fun StatisticsScreen(isActive: Boolean = false) {
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
+                    item {
+                        HeatMapCard(
+                            sessions = sessions,
+                            currentTime = currentTime,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    item {
+                        TrendChartCard(
+                            sessions = sessions,
+                            currentTime = currentTime,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    item {
+                        DonutChartCard(
+                            sessions = sessions,
+                            currentTime = currentTime,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
@@ -264,6 +298,103 @@ private data class PeriodOverview(
     val movieComparison: String = "",
     val climaxComparison: String = ""
 )
+
+// ── 热力图数据 ──
+private data class HeatmapData(
+    val weeks: List<HeatmapWeek>,
+    val monthLabels: List<Pair<Int, String>>,
+    val weekCount: Int,
+    val maxCount: Int,
+    val activeDays: Int,
+    val totalDays: Int
+)
+
+private data class HeatmapWeek(
+    val days: List<HeatmapDay>
+)
+
+private data class HeatmapDay(
+    val date: LocalDate,
+    val count: Int,
+    val totalDurationSeconds: Int,
+    val isFuture: Boolean
+)
+
+private fun calculateHeatmapData(
+    sessions: List<Session>,
+    now: LocalDateTime
+): HeatmapData {
+    val today = now.toLocalDate()
+    val weeksToShow = 14
+    val dayOfWeek = today.dayOfWeek.value
+    val mondayThisWeek = today.minusDays((dayOfWeek - 1).toLong())
+    val startMonday = mondayThisWeek.minusWeeks((weeksToShow - 1).toLong())
+
+    val sessionMap = sessions
+        .groupBy { it.timestamp.toLocalDate() }
+        .mapValues { e -> e.value.size to e.value.sumOf { it.duration } }
+
+    val weeks = mutableListOf<HeatmapWeek>()
+    val monthLabels = mutableListOf<Pair<Int, String>>()
+    var lastMonth = -1
+    var activeDays = 0
+    var totalDays = 0
+
+    for (weekIndex in 0 until weeksToShow) {
+        val weekStart = startMonday.plusWeeks(weekIndex.toLong())
+
+        if (weekStart.monthValue != lastMonth) {
+            monthLabels.add(weekIndex to "${weekStart.monthValue}月")
+            lastMonth = weekStart.monthValue
+        }
+
+        val days = (0 until 7).map { dayOffset ->
+            val date = weekStart.plusDays(dayOffset.toLong())
+            val isFuture = date > today
+            val (count, duration) = sessionMap[date] ?: (0 to 0)
+            if (!isFuture) {
+                totalDays++
+                if (count > 0) activeDays++
+            }
+            HeatmapDay(date, count, duration, isFuture)
+        }
+        weeks.add(HeatmapWeek(days))
+    }
+
+    val maxCount = sessionMap.values.maxOfOrNull { it.first } ?: 0
+
+    return HeatmapData(
+        weeks = weeks,
+        monthLabels = monthLabels,
+        weekCount = weeksToShow,
+        maxCount = maxCount,
+        activeDays = activeDays,
+        totalDays = totalDays
+    )
+}
+
+// ── 趋势图数据 ──
+private fun calculateTrendData(
+    sessions: List<Session>,
+    now: LocalDateTime
+): List<Pair<String, Float>> {
+    val today = now.toLocalDate()
+    val dayOfWeek = today.dayOfWeek.value
+    val mondayThisWeek = today.minusDays((dayOfWeek - 1).toLong())
+    val weeksToShow = 12
+    val result = mutableListOf<Pair<String, Float>>()
+
+    for (i in weeksToShow - 1 downTo 0) {
+        val weekStart = mondayThisWeek.minusWeeks(i.toLong())
+        val weekEnd = weekStart.plusDays(6)
+        val totalMinutes = sessions
+            .filter { it.timestamp.toLocalDate() in weekStart..weekEnd }
+            .sumOf { it.duration } / 60f
+        val label = if (i == 0) "本周" else "${weekStart.monthValue}/${weekStart.dayOfMonth}"
+        result.add(label to totalMinutes)
+    }
+    return result
+}
 
 private fun calculatePeriodData(
     sessions: List<Session>,
@@ -1440,6 +1571,796 @@ private fun OverviewDetailRow(
         }
     }
 }
+
+// ════════════════════════════════════════
+// 热力图 HeatMapCard
+// ════════════════════════════════════════
+
+@Composable
+private fun HeatMapCard(
+    sessions: List<Session>,
+    currentTime: LocalDateTime,
+    modifier: Modifier = Modifier
+) {
+    val heatmapData by remember(sessions, currentTime) {
+        derivedStateOf { calculateHeatmapData(sessions, currentTime) }
+    }
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DateRange,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "活动热力图",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "最近 ${heatmapData.weekCount} 周",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            HeatMapGrid(data = heatmapData)
+
+            Spacer(Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "少",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(6.dp))
+                val primary = MaterialTheme.colorScheme.primary
+                val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                listOf(
+                    surfaceColor,
+                    primary.copy(alpha = 0.25f),
+                    primary.copy(alpha = 0.5f),
+                    primary.copy(alpha = 0.75f),
+                    primary
+                ).forEach { color ->
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 1.dp)
+                            .size(11.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(color)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "多",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "活跃 ${heatmapData.activeDays} / ${heatmapData.totalDays} 天",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (heatmapData.maxCount > 0) {
+                    Text(
+                        "单日最高 ${heatmapData.maxCount} 次",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatMapGrid(
+    data: HeatmapData,
+    modifier: Modifier = Modifier
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val futureColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val levels = listOf(
+        surfaceColor,
+        primary.copy(alpha = 0.25f),
+        primary.copy(alpha = 0.5f),
+        primary.copy(alpha = 0.75f),
+        primary
+    )
+
+    val animatedProgress = remember(data) { Animatable(0f) }
+    LaunchedEffect(data) {
+        animatedProgress.snapTo(0f)
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
+        )
+    }
+
+    val cellSize = 13.dp
+    val cellGap = 3.dp
+    val labelWidth = 22.dp
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.padding(start = labelWidth)) {
+            data.monthLabels.forEach { (weekIndex, label) ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                    color = onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(
+                        start = (cellSize + cellGap) * weekIndex
+                    )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.width(labelWidth),
+                verticalArrangement = Arrangement.spacedBy(cellGap)
+            ) {
+                listOf("一", "", "三", "", "五", "", "日").forEach { label ->
+                    Box(modifier = Modifier.size(cellSize)) {
+                        if (label.isNotEmpty()) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                color = onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.fillMaxSize(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(cellGap)
+            ) {
+                data.weeks.forEach { week ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(cellGap)
+                    ) {
+                        week.days.forEach { day ->
+                            val level = when {
+                                day.isFuture -> 5
+                                day.count == 0 -> 0
+                                data.maxCount == 0 -> 0
+                                else -> {
+                                    val ratio = day.count.toFloat() / data.maxCount
+                                    when {
+                                        ratio <= 0.25f -> 1
+                                        ratio <= 0.5f -> 2
+                                        ratio <= 0.75f -> 3
+                                        else -> 4
+                                    }
+                                }
+                            }
+
+                            val cellColor = when (level) {
+                                5 -> futureColor
+                                0 -> levels[0]
+                                else -> levels[level]
+                            }
+
+                            val alpha = when (level) {
+                                0, 5 -> 1f
+                                else -> animatedProgress.value
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(cellSize)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(cellColor.copy(alpha = alpha))
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ════════════════════════════════════════
+// 趋势图 TrendChartCard
+// ════════════════════════════════════════
+
+@Composable
+private fun TrendChartCard(
+    sessions: List<Session>,
+    currentTime: LocalDateTime,
+    modifier: Modifier = Modifier
+) {
+    val trendData by remember(sessions, currentTime) {
+        derivedStateOf { calculateTrendData(sessions, currentTime) }
+    }
+
+    val totalMinutes = trendData.sumOf { it.second.toDouble() }.toFloat()
+    val avgMinutes = if (trendData.isNotEmpty()) totalMinutes / trendData.size else 0f
+    val rawMax = trendData.maxOfOrNull { it.second } ?: 0f
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "趋势分析",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "最近 12 周时长变化",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column {
+                    Text(
+                        "周均时长",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "%.1f 分钟".format(avgMinutes),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "12周总计",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        formatDuration((totalMinutes * 60).toInt()),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            LineChart(data = trendData, rawMax = rawMax)
+        }
+    }
+}
+
+@Composable
+private fun LineChart(
+    data: List<Pair<String, Float>>,
+    modifier: Modifier = Modifier,
+    chartHeight: Dp = 160.dp,
+    rawMax: Float = 0f
+) {
+    if (data.isEmpty() || data.all { it.second <= 0f }) {
+        Box(
+            modifier = modifier
+                .height(chartHeight)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "暂无数据",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        return
+    }
+
+    val maxValue = (rawMax * 1.2f).coerceAtLeast(1f)
+    val primary = MaterialTheme.colorScheme.primary
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val labelStyle = MaterialTheme.typography.labelSmall
+
+    val animatedProgress = remember(data) { Animatable(0f) }
+    LaunchedEffect(data) {
+        animatedProgress.snapTo(0f)
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+        )
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(chartHeight)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(32.dp)
+                    .fillMaxHeight()
+            ) {
+                Text(
+                    "${maxValue.toInt()}",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+                Text(
+                    "${(maxValue / 2).toInt()}",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+                Text(
+                    "0",
+                    style = labelStyle,
+                    color = onSurfaceVariant.copy(alpha = 0.25f),
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(start = 36.dp)
+                    .fillMaxSize()
+                    .drawBehind {
+                        val gridCount = 4
+                        for (i in 0..gridCount) {
+                            val y = size.height * i / gridCount
+                            drawLine(
+                                color = outlineVariant.copy(alpha = 0.2f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
+                    }
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val stepX = if (data.size > 1) w / (data.size - 1) else w
+
+                    val points = data.mapIndexed { index, (_, value) ->
+                        val x = index * stepX
+                        val y = h - (value / maxValue) * h * animatedProgress.value
+                        Offset(x, y)
+                    }
+
+                    if (points.size >= 2) {
+                        val linePath = Path().apply {
+                            moveTo(points.first().x, points.first().y)
+                            for (i in 1 until points.size) {
+                                val prev = points[i - 1]
+                                val curr = points[i]
+                                val midX = (prev.x + curr.x) / 2
+                                cubicTo(midX, prev.y, midX, curr.y, curr.x, curr.y)
+                            }
+                        }
+
+                        val fillPath = Path().apply {
+                            addPath(linePath)
+                            lineTo(points.last().x, h)
+                            lineTo(points.first().x, h)
+                            close()
+                        }
+
+                        drawPath(
+                            path = fillPath,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    primary.copy(alpha = 0.35f),
+                                    primary.copy(alpha = 0.0f)
+                                )
+                            )
+                        )
+
+                        drawPath(
+                            path = linePath,
+                            color = primary,
+                            style = Stroke(
+                                width = 2.5.dp.toPx(),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+
+                    points.forEachIndexed { index, point ->
+                        val value = data[index].second
+                        val isMax = value == rawMax && value > 0f
+                        drawCircle(
+                            color = if (isMax) primary else primary.copy(alpha = 0.7f),
+                            radius = (if (isMax) 5.dp else 3.dp).toPx(),
+                            center = point
+                        )
+                        if (isMax) {
+                            drawCircle(
+                                color = Color.White,
+                                radius = 2.dp.toPx(),
+                                center = point
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, start = 36.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val maxLabels = 6
+            val step = ((data.size + maxLabels - 1) / maxLabels).coerceAtLeast(1)
+            data.forEachIndexed { index, (label, _) ->
+                if (index % step == 0 || index == data.size - 1) {
+                    Text(
+                        text = label,
+                        style = labelStyle,
+                        color = onSurfaceVariant.copy(alpha = 0.6f),
+                        fontSize = 9.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ════════════════════════════════════════
+// 圆环图 DonutChartCard
+// ════════════════════════════════════════
+
+@Composable
+private fun DonutChartCard(
+    sessions: List<Session>,
+    currentTime: LocalDateTime,
+    modifier: Modifier = Modifier
+) {
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("心情", "道具", "地点")
+
+    val distribution by remember(sessions, currentTime, selectedTabIndex) {
+        derivedStateOf {
+            val filtered = sessions.filter {
+                isWithinPeriod(it.timestamp, currentTime, PeriodType.YEAR)
+            }
+            val map = when (selectedTabIndex) {
+                0 -> filtered.groupingBy { it.mood.ifEmpty { "未记录" } }.eachCount()
+                1 -> filtered.groupingBy { it.props.ifEmpty { "无" } }.eachCount()
+                2 -> filtered.groupingBy { it.location.ifEmpty { "未记录" } }.eachCount()
+                else -> emptyMap()
+            }
+            val sorted = map.entries.sortedByDescending { it.value }
+            val top = sorted.take(6).map { it.key to it.value }
+            if (sorted.size > 6) {
+                val othersCount = sorted.drop(6).sumOf { it.value }
+                top + ("其他" to othersCount)
+            } else {
+                top
+            }
+        }
+    }
+
+    val total = distribution.sumOf { it.second }
+
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        )
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.tertiaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DonutLarge,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Text(
+                    text = "分布统计",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                tabs.forEachIndexed { index, label ->
+                    val isSelected = selectedTabIndex == index
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.surfaceContainerLowest
+                                else Color.Transparent
+                            )
+                            .clickable { selectedTabIndex = index }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isSelected) FontWeight.SemiBold
+                            else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            if (total == 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "暂无数据",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    DonutChart(
+                        data = distribution,
+                        total = total,
+                        modifier = Modifier.size(140.dp)
+                    )
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        distribution.forEachIndexed { index, (label, count) ->
+                            val color = donutColors[index % donutColors.size]
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                )
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "$count",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "%.0f%%".format(count.toFloat() / total * 100),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DonutChart(
+    data: List<Pair<String, Int>>,
+    total: Int,
+    modifier: Modifier = Modifier
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    val error = MaterialTheme.colorScheme.error
+    val bgRingColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val colors = remember(primary, secondary, tertiary, error) {
+        listOf(
+            primary,
+            secondary,
+            tertiary,
+            error,
+            Color(0xFF8E24AA),
+            Color(0xFF00897B),
+            Color(0xFFEF6C00)
+        )
+    }
+
+    val animatedProgress = remember(data) { Animatable(0f) }
+    LaunchedEffect(data) {
+        animatedProgress.snapTo(0f)
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+        )
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val diameter = minOf(size.width, size.height)
+            val strokePx = 18.dp.toPx()
+            val radius = (diameter - strokePx) / 2
+            val center = Offset(size.width / 2, size.height / 2)
+
+            drawCircle(
+                color = bgRingColor,
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokePx)
+            )
+
+            var startAngle = -90f
+            data.forEachIndexed { index, (_, count) ->
+                val sweep = (count.toFloat() / total) * 360f * animatedProgress.value
+                if (sweep > 0.5f) {
+                    drawArc(
+                        color = colors[index % colors.size],
+                        startAngle = startAngle,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        style = Stroke(width = strokePx, cap = StrokeCap.Round),
+                        topLeft = Offset(center.x - radius, center.y - radius),
+                        size = Size(radius * 2, radius * 2)
+                    )
+                }
+                startAngle += sweep
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                total.toString(),
+                style = MaterialTheme.typography.headlineMedium,
+                color = onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "总计",
+                style = MaterialTheme.typography.labelSmall,
+                color = onSurfaceVariant
+            )
+        }
+    }
+}
+
+// 圆环图颜色列表（在 composable 外定义避免重组）
+private val donutColors = listOf(
+    Color(0xFF6750A4),
+    Color(0xFF625B71),
+    Color(0xFF7D5260),
+    Color(0xFFB3261E),
+    Color(0xFF8E24AA),
+    Color(0xFF00897B),
+    Color(0xFFEF6C00)
+)
 
 // --- 工具函数 ---
 
