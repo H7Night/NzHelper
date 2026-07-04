@@ -32,7 +32,7 @@
         android:theme="@style/Theme.NzHelper"
         tools:targetApi="31">
         <activity
-            android:name=".ui.activity.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.NzHelper">
             <intent-filter>
@@ -43,17 +43,17 @@
         </activity>
 
         <activity
-            android:name=".ui.activity.AboutActivity"
+            android:name=".feature.about.AboutActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.activity.RecycleBinActivity"
+            android:name=".feature.recyclebin.RecycleBinActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.activity.GestureLockSetupActivity"
+            android:name=".feature.lock.GestureLockSetupActivity"
             android:exported="false" />
 
         <service
-            android:name="me.neko.nzhelper.ui.service.TimerService"
+            android:name="me.neko.nzhelper.core.service.TimerService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
     </application>

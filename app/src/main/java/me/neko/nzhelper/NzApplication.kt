@@ -6,8 +6,8 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonPrimitive
 import com.google.gson.JsonSerializer
-import me.neko.nzhelper.ui.screens.setting.RecycleBinWorker
-import me.neko.nzhelper.ui.util.NotificationUtil
+import me.neko.nzhelper.core.worker.RecycleBinWorker
+import me.neko.nzhelper.core.notification.NotificationUtil
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
