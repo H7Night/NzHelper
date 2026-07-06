@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material.icons.rounded.Add
@@ -210,7 +209,7 @@ fun HomeScreen(isActive: Boolean = false) {
                             showManualAddDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Icon(
                             Icons.Rounded.Add,
@@ -225,7 +224,7 @@ fun HomeScreen(isActive: Boolean = false) {
                 if (sessions.isNotEmpty()) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(24.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                             ),
@@ -241,7 +240,7 @@ fun HomeScreen(isActive: Boolean = false) {
                                     Box(
                                         modifier = Modifier
                                             .size(40.dp)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .clip(MaterialTheme.shapes.medium)
                                             .background(MaterialTheme.colorScheme.primaryContainer),
                                         contentAlignment = Alignment.Center
                                     ) {
@@ -281,7 +280,7 @@ fun HomeScreen(isActive: Boolean = false) {
                 } else {
                     item {
                         Card(
-                            shape = RoundedCornerShape(24.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(
                                     alpha = 0.5f

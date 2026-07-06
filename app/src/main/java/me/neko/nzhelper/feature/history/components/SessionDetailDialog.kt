@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -42,7 +41,7 @@ fun SessionDetailDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerLowest,
             modifier = Modifier
                 .fillMaxWidth(0.95f)
@@ -64,7 +63,7 @@ fun SessionDetailDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(MaterialTheme.shapes.large)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f))
                         .padding(vertical = 8.dp)
                 ) {
@@ -85,7 +84,7 @@ fun SessionDetailDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(MaterialTheme.shapes.large)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f))
                             .padding(16.dp)
                     ) {
@@ -110,13 +109,13 @@ fun SessionDetailDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.large
                     ) { Text("关闭") }
 
                     Button(
                         onClick = onEditClick,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Icon(
                             Icons.Default.Edit,

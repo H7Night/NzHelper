@@ -5,7 +5,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,13 +16,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DonutLarge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,17 +50,27 @@ import me.neko.nzhelper.feature.statistics.model.PeriodType
 import me.neko.nzhelper.feature.statistics.util.isWithinPeriod
 import java.time.LocalDateTime
 
-// 圆环图颜色列表
-private val donutColors = listOf(
-    Color(0xFF6750A4),
-    Color(0xFF625B71),
-    Color(0xFF7D5260),
-    Color(0xFFB3261E),
-    Color(0xFF8E24AA),
-    Color(0xFF00897B),
-    Color(0xFFEF6C00)
-)
+/**
+ * 从当前颜色方案派生的圆环图调色板，避免硬编码颜色字面量，
+ * 保证深色/浅色模式与动态取色下均与主题一致。
+ */
+@Composable
+private fun rememberDonutColors(): List<Color> {
+    val cs = MaterialTheme.colorScheme
+    return remember(cs) {
+        listOf(
+            cs.primary,
+            cs.secondary,
+            cs.tertiary,
+            cs.error,
+            cs.primary.copy(alpha = 0.6f),
+            cs.tertiary.copy(alpha = 0.6f),
+            cs.secondary.copy(alpha = 0.6f)
+        )
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DonutChartCard(
     sessions: List<Session>,
@@ -91,10 +103,11 @@ fun DonutChartCard(
     }
 
     val total = distribution.sumOf { it.second }
+    val donutColors = rememberDonutColors()
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
@@ -107,7 +120,7 @@ fun DonutChartCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.tertiaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -128,37 +141,26 @@ fun DonutChartCard(
 
             Spacer(Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(3.dp),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 tabs.forEachIndexed { index, label ->
-                    val isSelected = selectedTabIndex == index
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.surfaceContainerLowest
-                                else Color.Transparent
+                    SegmentedButton(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = tabs.size
+                        ),
+                        label = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.SemiBold
+                                else FontWeight.Normal
                             )
-                            .clickable { selectedTabIndex = index }
-                            .padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (isSelected) FontWeight.SemiBold
-                            else FontWeight.Normal
-                        )
-                    }
+                        }
+                    )
                 }
             }
 
@@ -186,6 +188,7 @@ fun DonutChartCard(
                     DonutChart(
                         data = distribution,
                         total = total,
+                        colors = donutColors,
                         modifier = Modifier.size(140.dp)
                     )
 
@@ -237,27 +240,12 @@ fun DonutChartCard(
 private fun DonutChart(
     data: List<Pair<String, Int>>,
     total: Int,
+    colors: List<Color>,
     modifier: Modifier = Modifier
 ) {
-    val primary = MaterialTheme.colorScheme.primary
-    val secondary = MaterialTheme.colorScheme.secondary
-    val tertiary = MaterialTheme.colorScheme.tertiary
-    val error = MaterialTheme.colorScheme.error
     val bgRingColor = MaterialTheme.colorScheme.surfaceContainerHighest
     val onSurface = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val colors = remember(primary, secondary, tertiary, error) {
-        listOf(
-            primary,
-            secondary,
-            tertiary,
-            error,
-            Color(0xFF8E24AA),
-            Color(0xFF00897B),
-            Color(0xFFEF6C00)
-        )
-    }
 
     val animatedProgress = remember(data) { Animatable(0f) }
     LaunchedEffect(data) {

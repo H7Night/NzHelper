@@ -1,7 +1,6 @@
 package me.neko.nzhelper.ui.component.dialog
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.AlertDialog
@@ -14,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun ConfirmDialog(
@@ -27,7 +25,6 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         icon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
         title = { Text(title) },
@@ -36,7 +33,7 @@ fun ConfirmDialog(
             Button(
                 onClick = onConfirm,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) { Text(confirmText) }
         },
@@ -44,7 +41,7 @@ fun ConfirmDialog(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = MaterialTheme.shapes.large
             ) { Text("取消") }
         }
     )

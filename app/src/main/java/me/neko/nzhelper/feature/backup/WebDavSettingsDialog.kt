@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Visibility
@@ -61,7 +60,6 @@ fun WebDavSettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         icon = {
             Icon(
@@ -169,7 +167,7 @@ fun WebDavSettingsDialog(
                     },
                     enabled = !testing,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text(if (testing) "测试中…" else "测试连接")
                 }
@@ -182,7 +180,7 @@ fun WebDavSettingsDialog(
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -200,7 +198,7 @@ fun WebDavSettingsDialog(
                     OutlinedButton(
                         onClick = { showClearConfirmDialog = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.large,
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
                         )
@@ -211,7 +209,7 @@ fun WebDavSettingsDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Text("取消")
                     }
@@ -219,7 +217,7 @@ fun WebDavSettingsDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Text("取消")
                     }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Schedule
@@ -47,7 +46,7 @@ fun PeriodOverviewDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.heightIn(max = screenHeight * 0.95f),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerLowest
         ) {
             Column(
@@ -96,7 +95,7 @@ fun PeriodOverviewDialog(
 
                     if (overview.count > 0) {
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = MaterialTheme.shapes.large,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Row(
@@ -109,7 +108,7 @@ fun PeriodOverviewDialog(
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(MaterialTheme.shapes.medium)
                                         .background(
                                             MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
                                         ),
@@ -210,7 +209,7 @@ fun PeriodOverviewDialog(
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text("关闭")
                 }

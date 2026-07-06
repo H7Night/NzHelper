@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.Card
@@ -52,7 +51,7 @@ fun HeatMapCard(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
@@ -65,7 +64,7 @@ fun HeatMapCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -121,7 +120,7 @@ fun HeatMapCard(
                         modifier = Modifier
                             .padding(horizontal = 1.dp)
                             .size(11.dp)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(MaterialTheme.shapes.extraSmall)
                             .background(color)
                     )
                 }
@@ -261,7 +260,7 @@ private fun HeatMapGrid(
                             Box(
                                 modifier = Modifier
                                     .size(cellSize)
-                                    .clip(RoundedCornerShape(3.dp))
+                                    .clip(MaterialTheme.shapes.extraSmall)
                                     .background(cellColor.copy(alpha = alpha))
                             )
                         }

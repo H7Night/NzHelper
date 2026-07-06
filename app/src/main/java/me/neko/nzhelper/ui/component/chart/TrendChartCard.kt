@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material3.Card
@@ -36,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -66,7 +64,7 @@ fun TrendChartCard(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
@@ -79,7 +77,7 @@ fun TrendChartCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.secondaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -176,6 +174,7 @@ private fun LineChart(
     val primary = MaterialTheme.colorScheme.primary
     val outlineVariant = MaterialTheme.colorScheme.outlineVariant
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val onPrimary = MaterialTheme.colorScheme.onPrimary
     val labelStyle = MaterialTheme.typography.labelSmall
 
     val animatedProgress = remember(data) { Animatable(0f) }
@@ -295,7 +294,7 @@ private fun LineChart(
                         )
                         if (isMax) {
                             drawCircle(
-                                color = Color.White,
+                                color = onPrimary,
                                 radius = 2.dp.toPx(),
                                 center = point
                             )

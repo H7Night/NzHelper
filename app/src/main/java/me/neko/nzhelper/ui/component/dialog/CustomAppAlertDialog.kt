@@ -3,7 +3,6 @@ package me.neko.nzhelper.ui.component.dialog
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -31,7 +30,6 @@ fun CustomAppAlertDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        shape = RoundedCornerShape(28.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         icon = {
             Icon(
@@ -61,7 +59,7 @@ fun CustomAppAlertDialog(
                     onDismissRequest()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = MaterialTheme.shapes.large
             ) {
                 Icon(
                     imageVector = confirmIcon,
@@ -77,7 +75,7 @@ fun CustomAppAlertDialog(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = MaterialTheme.shapes.large
             ) {
                 Text(
                     text = dismissText

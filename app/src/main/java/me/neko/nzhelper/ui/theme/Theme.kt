@@ -54,6 +54,7 @@ fun NzHelperTheme(
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        shapes = Shapes,
         motionScheme = MotionScheme.expressive(),
         typography = Typography,
         content = content

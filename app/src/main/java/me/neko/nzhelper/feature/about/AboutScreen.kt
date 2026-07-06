@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -136,7 +135,7 @@ fun AboutScreen(
                         contentDescription = null,
                         modifier = Modifier
                             .size(90.dp)
-                            .clip(RoundedCornerShape(22.dp))
+                            .clip(MaterialTheme.shapes.extraLarge)
                     )
                     Text(
                         text = stringResource(R.string.app_name),
@@ -233,7 +232,7 @@ private fun SettingsItem(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(MaterialTheme.shapes.medium)
                     .background(iconContainerColor.copy(alpha = contentAlpha)),
                 contentAlignment = Alignment.Center
             ) {
