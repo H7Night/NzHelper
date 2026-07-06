@@ -11,7 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,9 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -65,7 +61,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import me.neko.nzhelper.R
 import me.neko.nzhelper.ui.component.setting.SettingsCard
-import me.neko.nzhelper.ui.component.setting.SettingsItem
 import me.neko.nzhelper.ui.component.setting.TrailingArrowIcon
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -210,31 +205,6 @@ fun AboutScreen(
 }
 
 @Composable
-private fun TrailingArrowIcon() {
-    Icon(
-        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-        modifier = Modifier.size(20.dp)
-    )
-}
-
-@Composable
-private fun SettingsCard(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
 private fun SettingsItem(
     painter: Painter,
     title: String,
@@ -275,7 +245,18 @@ private fun SettingsItem(
                 )
             }
         },
-        headlineContent = {
+        trailingContent = {
+            if (trailingContent != null) {
+                trailingContent()
+            } else {
+                TrailingArrowIcon()
+            }
+        },
+        overlineContent = null,
+        supportingContent = null,
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        elevation = ListItemDefaults.elevation(),
+        content = {
             Column {
                 Text(
                     text = title,
@@ -292,14 +273,6 @@ private fun SettingsItem(
                 }
             }
         },
-        trailingContent = {
-            if (trailingContent != null) {
-                trailingContent()
-            } else {
-                TrailingArrowIcon()
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
     )
 }
 

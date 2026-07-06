@@ -111,7 +111,18 @@ fun SettingsItem(
                 )
             }
         },
-        headlineContent = {
+        trailingContent = {
+            if (trailingContent != null) {
+                trailingContent()
+            } else {
+                TrailingArrowIcon()
+            }
+        },
+        overlineContent = null,
+        supportingContent = null,
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        elevation = ListItemDefaults.elevation(),
+        content = {
             Column {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -136,13 +147,5 @@ fun SettingsItem(
                 }
             }
         },
-        trailingContent = {
-            if (trailingContent != null) {
-                trailingContent()
-            } else {
-                TrailingArrowIcon()
-            }
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
     )
 }
