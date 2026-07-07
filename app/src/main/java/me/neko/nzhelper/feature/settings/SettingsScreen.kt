@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.AutoDelete
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -33,8 +32,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Mood
-import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.CircularProgressIndicator
@@ -73,27 +71,26 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.NzApplication
-import me.neko.nzhelper.core.model.Session
-import me.neko.nzhelper.core.database.SessionRepository
-import me.neko.nzhelper.core.database.RecycleRepository
 import me.neko.nzhelper.core.database.BackupRepository
+import me.neko.nzhelper.core.database.RecycleRepository
+import me.neko.nzhelper.core.database.SessionRepository
+import me.neko.nzhelper.core.datastore.RecycleBinSettings
+import me.neko.nzhelper.core.datastore.StorageSettings
+import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.model.Session
+import me.neko.nzhelper.core.webdav.WebDavSettings
 import me.neko.nzhelper.feature.about.AboutActivity
-import me.neko.nzhelper.feature.lock.GestureLockSetupActivity
-import me.neko.nzhelper.feature.recyclebin.RecycleBinActivity
-import me.neko.nzhelper.ui.component.dialog.ConfirmDialog
+import me.neko.nzhelper.feature.backup.WebDavSettingsDialog
 import me.neko.nzhelper.feature.lock.AppLockManager
 import me.neko.nzhelper.feature.lock.GestureLockManager
-import me.neko.nzhelper.feature.settings.components.CategoryManageDialog
-import me.neko.nzhelper.core.datastore.CategorySettings
-import me.neko.nzhelper.core.datastore.RecycleBinSettings
+import me.neko.nzhelper.feature.lock.GestureLockSetupActivity
+import me.neko.nzhelper.feature.recyclebin.RecycleBinActivity
+import me.neko.nzhelper.feature.settings.components.StorageLocationDialog
+import me.neko.nzhelper.ui.component.dialog.ConfirmDialog
 import me.neko.nzhelper.ui.component.setting.SettingsCard
 import me.neko.nzhelper.ui.component.setting.SettingsDivider
 import me.neko.nzhelper.ui.component.setting.SettingsItem
-import me.neko.nzhelper.feature.settings.components.StorageLocationDialog
-import me.neko.nzhelper.core.datastore.StorageSettings
 import me.neko.nzhelper.ui.component.setting.TrailingArrowIcon
-import me.neko.nzhelper.core.webdav.WebDavSettings
-import me.neko.nzhelper.feature.backup.WebDavSettingsDialog
 import java.io.OutputStreamWriter
 import java.util.Locale
 
@@ -115,6 +112,7 @@ fun SettingsScreen() {
     var showStorageDialog by remember { mutableStateOf(false) }
 
     var recycleBinCount by remember { mutableIntStateOf(0) }
+    var tagCount by remember { mutableIntStateOf(TagSettings.getTags(context).size) }
     var autoCleanEnabled by remember { mutableStateOf(RecycleBinSettings.isAutoCleanEnabled(context)) }
 
     var lockEnabled by remember { mutableStateOf(AppLockManager.isLockEnabled(context)) }
@@ -170,6 +168,7 @@ fun SettingsScreen() {
                     sessions.clear()
                     sessions.addAll(loaded)
                     recycleBinCount = RecycleRepository.loadRecycleBin(context).size
+                    tagCount = TagSettings.getTags(context).size
                 }
                 hasGesturePassword = GestureLockManager.hasGesturePassword(context)
                 pendingStorageSwitch?.let { (mode, path) ->
@@ -291,13 +290,6 @@ fun SettingsScreen() {
             }
         }
     }
-
-    var showPropsDialog by remember { mutableStateOf(false) }
-    var showMoodDialog by remember { mutableStateOf(false) }
-    var customProps by remember { mutableStateOf(CategorySettings.getProps(context)) }
-    var customMoods by remember { mutableStateOf(CategorySettings.getMoods(context)) }
-    var customLocations by remember { mutableStateOf(CategorySettings.getLocations(context)) }
-    var showLocationDialog by remember { mutableStateOf(false) }
 
     var showWebDavDialog by remember { mutableStateOf(false) }
     var webDavConfigured by remember { mutableStateOf(WebDavSettings.isConfigured(context)) }
@@ -466,30 +458,19 @@ fun SettingsScreen() {
             item {
                 SettingsCard {
                     SettingsItem(
-                        icon = Icons.Outlined.Place,
-                        title = "自定义地点",
-                        subtitle = "共 ${customLocations.size} 项，点击管理",
+                        icon = Icons.Outlined.Sell,
+                        title = "标签管理",
+                        subtitle = "分类 · 分组 · 标签（共 $tagCount 个标签）",
                         iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        onClick = { showLocationDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Category,
-                        title = "自定义道具",
-                        subtitle = "共 ${customProps.size} 项，点击管理",
-                        iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                        onClick = { showPropsDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Mood,
-                        title = "自定义心情",
-                        subtitle = "共 ${customMoods.size} 项，点击管理",
-                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        onClick = { showMoodDialog = true }
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    context,
+                                    TagManageActivity::class.java
+                                )
+                            )
+                        }
                     )
                 }
             }
@@ -709,66 +690,6 @@ fun SettingsScreen() {
                 showStorageDialog = false
             },
             onDismiss = { showStorageDialog = false }
-        )
-    }
-
-    if (showLocationDialog) {
-        CategoryManageDialog(
-            title = "管理地点",
-            items = customLocations,
-            onAdd = {
-                CategorySettings.addLocation(context, it)
-                customLocations = CategorySettings.getLocations(context)
-            },
-            onRemove = {
-                CategorySettings.removeLocation(context, it)
-                customLocations = CategorySettings.getLocations(context)
-            },
-            onReset = {
-                CategorySettings.resetLocations(context)
-                customLocations = CategorySettings.getLocations(context)
-            },
-            onDismiss = { showLocationDialog = false }
-        )
-    }
-
-    if (showPropsDialog) {
-        CategoryManageDialog(
-            title = "管理道具",
-            items = customProps,
-            onAdd = {
-                CategorySettings.addProp(context, it)
-                customProps = CategorySettings.getProps(context)
-            },
-            onRemove = {
-                CategorySettings.removeProp(context, it)
-                customProps = CategorySettings.getProps(context)
-            },
-            onReset = {
-                CategorySettings.resetProps(context)
-                customProps = CategorySettings.getProps(context)
-            },
-            onDismiss = { showPropsDialog = false }
-        )
-    }
-
-    if (showMoodDialog) {
-        CategoryManageDialog(
-            title = "管理心情",
-            items = customMoods,
-            onAdd = {
-                CategorySettings.addMood(context, it)
-                customMoods = CategorySettings.getMoods(context)
-            },
-            onRemove = {
-                CategorySettings.removeMood(context, it)
-                customMoods = CategorySettings.getMoods(context)
-            },
-            onReset = {
-                CategorySettings.resetMoods(context)
-                customMoods = CategorySettings.getMoods(context)
-            },
-            onDismiss = { showMoodDialog = false }
         )
     }
 

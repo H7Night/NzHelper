@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.neko.nzhelper.NzApplication
 import me.neko.nzhelper.core.datastore.StorageSettings
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.WebDavBackupPayload
 import me.neko.nzhelper.core.webdav.WebDavSettings
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -136,10 +137,13 @@ object BackupRepository {
                 val recycleBin = RecycleRepository.loadRecycleBin(context)
 
                 val backupPayload = WebDavBackupPayload(
-                    version = 1,
+                    version = 2,
                     exportedAt = System.currentTimeMillis(),
                     sessions = sessions,
-                    recycleBin = recycleBin
+                    recycleBin = recycleBin,
+                    categories = TagSettings.getCategories(context),
+                    tagGroups = TagSettings.getGroups(context),
+                    tags = TagSettings.getTags(context)
                 )
 
                 val json = gson.toJson(backupPayload)
@@ -236,10 +240,26 @@ object BackupRepository {
                     val currentSessions = SessionRepository.loadSessions(context)
                     val mergedSessions = (currentSessions + payload.sessions)
                         .distinctBy { it.timestamp }
+                        .map { TagSettings.migrateLegacySession(context, it) }
 
                     val currentRecycle = RecycleRepository.loadRecycleBin(context)
                     val mergedRecycle = (currentRecycle + payload.recycleBin)
                         .distinctBy { it.session.timestamp }
+                        .map {
+                            it.copy(
+                                session = TagSettings.migrateLegacySession(
+                                    context,
+                                    it.session
+                                )
+                            )
+                        }
+
+                    TagSettings.mergeTaxonomy(
+                        context,
+                        payload.categories,
+                        payload.tagGroups,
+                        payload.tags
+                    )
 
                     SessionRepository.saveSessions(context, mergedSessions)
                     RecycleRepository.saveRecycleBin(context, mergedRecycle)

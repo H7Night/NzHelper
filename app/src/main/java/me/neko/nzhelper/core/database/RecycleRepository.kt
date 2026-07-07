@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import me.neko.nzhelper.NzApplication
 import me.neko.nzhelper.core.datastore.RecycleBinSettings
 import me.neko.nzhelper.core.datastore.StorageSettings
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.RecycleBinItem
 import me.neko.nzhelper.core.model.Session
 import java.io.File
@@ -95,7 +96,10 @@ object RecycleRepository {
     suspend fun loadRecycleBin(context: Context): List<RecycleBinItem> =
         withContext(Dispatchers.IO) {
             val json = readRecycleBinJson(context)
-            if (json.isNullOrEmpty()) emptyList() else parseRecycleBinJson(json)
+            if (json.isNullOrEmpty()) emptyList()
+            else parseRecycleBinJson(json).map {
+                it.copy(session = TagSettings.migrateLegacySession(context, it.session))
+            }
         }
 
     /**

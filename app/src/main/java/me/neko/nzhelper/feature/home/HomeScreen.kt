@@ -69,7 +69,7 @@ import me.neko.nzhelper.feature.home.components.ConfirmResetDialog
 import me.neko.nzhelper.feature.home.components.ConfirmStopDialog
 import me.neko.nzhelper.feature.home.components.TimelineItem
 import me.neko.nzhelper.feature.home.components.TimerCard
-import me.neko.nzhelper.core.datastore.CategorySettings
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.service.TimerService
 import java.time.LocalDateTime
 
@@ -200,6 +200,7 @@ fun HomeScreen(isActive: Boolean = false) {
                         onClick = {
                             val now = LocalDateTime.now()
                             formState = SessionFormState(
+                                categoryId = TagSettings.defaultCategory(context).id,
                                 manualYear = now.year,
                                 manualMonth = now.monthValue,
                                 manualDay = now.dayOfMonth,
@@ -348,12 +349,10 @@ fun HomeScreen(isActive: Boolean = false) {
                 timestamp = now,
                 duration = elapsedSeconds,
                 remark = formState.remark,
-                location = formState.location,
-                watchedMovie = formState.watchedMovie,
-                climax = formState.climax,
                 rating = formState.rating,
-                mood = formState.mood,
-                props = formState.props
+                climax = formState.climax,
+                categoryId = formState.categoryId.ifBlank { TagSettings.defaultCategory(context).id },
+                tagIds = formState.tagIds.toList()
             )
             sessions.add(0, session)
             scope.launch { SessionRepository.saveSessions(context, sessions) }
@@ -365,10 +364,7 @@ fun HomeScreen(isActive: Boolean = false) {
         onDismiss = {
             showDetailsDialog = false
             context.startService(serviceIntent.apply { action = TimerService.ACTION_START })
-        },
-        locationList = CategorySettings.getLocations(context),
-        propsList = CategorySettings.getProps(context),
-        moodList = CategorySettings.getMoods(context)
+        }
     )
 
     DetailsDialog(
@@ -394,12 +390,10 @@ fun HomeScreen(isActive: Boolean = false) {
                 timestamp = timestamp,
                 duration = duration,
                 remark = formState.remark,
-                location = formState.location,
-                watchedMovie = formState.watchedMovie,
-                climax = formState.climax,
                 rating = formState.rating,
-                mood = formState.mood,
-                props = formState.props
+                climax = formState.climax,
+                categoryId = formState.categoryId.ifBlank { TagSettings.defaultCategory(context).id },
+                tagIds = formState.tagIds.toList()
             )
             sessions.add(0, session)
             scope.launch { SessionRepository.saveSessions(context, sessions) }
@@ -407,10 +401,7 @@ fun HomeScreen(isActive: Boolean = false) {
             formState = SessionFormState()
             showManualAddDialog = false
         },
-        onDismiss = { showManualAddDialog = false },
-        locationList = CategorySettings.getLocations(context),
-        propsList = CategorySettings.getProps(context),
-        moodList = CategorySettings.getMoods(context)
+        onDismiss = { showManualAddDialog = false }
     )
 }
 

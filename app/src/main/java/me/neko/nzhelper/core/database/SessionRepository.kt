@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.neko.nzhelper.NzApplication
 import me.neko.nzhelper.core.datastore.StorageSettings
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
 import java.io.File
 import java.time.LocalDateTime
@@ -67,24 +68,32 @@ object SessionRepository {
     }
 
     /**
-     * 解析 sessions JSON，必要时执行 R8 混淆数据迁移并回写。
+     * 解析 sessions JSON，必要时执行 R8 混淆数据迁移、旧字段→标签迁移并回写。
      */
     internal fun parseSessionsJson(context: Context, json: String): List<Session> {
         return try {
             val root = JsonParser.parseString(json)
-            if (root.isJsonArray && root.asJsonArray.size() > 0) {
+            val raw: List<Session> = if (root.isJsonArray && root.asJsonArray.size() > 0) {
                 val firstElem = root.asJsonArray[0]
-                if (firstElem.isJsonObject) {
-                    val obj = firstElem.asJsonObject
-                    if (!obj.has("timestamp")) {
-                        val migrated = migrateObfuscatedData(root.asJsonArray)
-                        val correctedJson = gson.toJson(migrated)
-                        writeJson(context, correctedJson)
-                        return migrated
-                    }
+                if (firstElem.isJsonObject && !firstElem.asJsonObject.has("timestamp")) {
+                    migrateObfuscatedData(root.asJsonArray)
+                } else {
+                    gson.fromJson(json, sessionsTypeToken) ?: emptyList()
                 }
+            } else {
+                gson.fromJson(json, sessionsTypeToken) ?: emptyList()
             }
-            gson.fromJson(json, sessionsTypeToken) ?: emptyList()
+            TagSettings.ensureDefaults(context)
+            val needsRewrite = raw.any {
+                it.tagIds.isNullOrEmpty() &&
+                        (!it.location.isNullOrBlank() || !it.mood.isNullOrBlank() ||
+                                !it.props.isNullOrBlank() || it.watchedMovie)
+            }
+            val migrated = raw.map { TagSettings.migrateLegacySession(context, it) }
+            if (needsRewrite) {
+                writeJson(context, gson.toJson(migrated))
+            }
+            migrated
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
@@ -135,7 +144,8 @@ object SessionRepository {
                 try {
                     val list: List<Session> = gson.fromJson(jsonStr, listType)
                     result.addAll(list)
-                    return@withContext result
+                    TagSettings.ensureDefaults(context)
+                    return@withContext result.map { TagSettings.migrateLegacySession(context, it) }
                 } catch (_: Exception) {
                     try {
                         val root = JsonParser.parseString(jsonStr).asJsonArray
@@ -185,7 +195,8 @@ object SessionRepository {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        result
+        TagSettings.ensureDefaults(context)
+        result.map { TagSettings.migrateLegacySession(context, it) }
     }
 
     // ===================== 内部工具 =====================

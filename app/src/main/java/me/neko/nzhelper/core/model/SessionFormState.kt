@@ -4,12 +4,10 @@ import java.time.LocalDateTime
 
 data class SessionFormState(
     val remark: String = "",
-    val location: String = "",
-    val watchedMovie: Boolean = false,
+    val categoryId: String = Session.DEFAULT_CATEGORY_ID,
+    val tagIds: Set<String> = emptySet(),
     val climax: Boolean = false,
     val rating: Float = 3f,
-    val mood: String = "平静",
-    val props: String = "手",
     val durationHour: String = "",
     val durationMinute: String = "",
     val durationSecond: String = "",

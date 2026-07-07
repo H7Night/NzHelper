@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.database.StatisticsRepository
 import me.neko.nzhelper.ui.component.chart.DonutChartCard
+import me.neko.nzhelper.ui.component.chart.TagBarChartCard
+import me.neko.nzhelper.ui.component.chart.TagComboCard
 import me.neko.nzhelper.feature.statistics.components.EmptyStateView
 import me.neko.nzhelper.ui.component.chart.HeatMapCard
 import me.neko.nzhelper.feature.statistics.components.LatestSessionCard
@@ -132,7 +134,7 @@ fun StatisticsScreen(isActive: Boolean = false) {
                             sessions = sessions,
                             onPeriodClick = { type, label ->
                                 selectedOverview = StatisticsRepository.calculatePeriodOverview(
-                                    sessions, currentTime, type, label
+                                    sessions, context, currentTime, type, label
                                 )
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -162,6 +164,20 @@ fun StatisticsScreen(isActive: Boolean = false) {
                     }
                     item {
                         DonutChartCard(
+                            sessions = sessions,
+                            currentTime = currentTime,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    item {
+                        TagBarChartCard(
+                            sessions = sessions,
+                            currentTime = currentTime,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    item {
+                        TagComboCard(
                             sessions = sessions,
                             currentTime = currentTime,
                             modifier = Modifier.fillMaxWidth()

@@ -59,6 +59,7 @@ import me.neko.nzhelper.core.model.RecycleBinItem
 import me.neko.nzhelper.core.database.RecycleRepository
 import me.neko.nzhelper.ui.component.dialog.ConfirmDialog
 import me.neko.nzhelper.core.datastore.RecycleBinSettings
+import me.neko.nzhelper.core.datastore.TagSettings
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
@@ -218,7 +219,15 @@ private fun RecycleBinSessionCard(
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy年M月d日 HH:mm") }
+
+    val categoryName = remember(item.session.categoryId) {
+        TagSettings.getCategory(context, item.session.categoryId)?.name ?: ""
+    }
+    val tagNames = remember(item.session.tagIds) {
+        item.session.tagIds.mapNotNull { TagSettings.getTag(context, it)?.name }
+    }
 
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
@@ -287,8 +296,10 @@ private fun RecycleBinSessionCard(
                             dMin > 0 -> "${dMin}分钟"
                             else -> "${dSec}秒"
                         }
-                        append("$durationText · ${item.session.mood} · 评分${item.session.rating}")
-                        if (item.session.location.isNotEmpty()) append(" · ${item.session.location}")
+                        append(durationText)
+                        if (categoryName.isNotEmpty()) append(" · $categoryName")
+                        append(" · 评分${item.session.rating}")
+                        if (tagNames.isNotEmpty()) append(" · ${tagNames.joinToString("/")}")
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

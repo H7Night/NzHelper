@@ -3,6 +3,8 @@ package me.neko.nzhelper.feature.history.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,23 +24,36 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.util.formatTime
+import me.neko.nzhelper.ui.component.tag.TagChip
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionDetailDialog(
     session: Session,
     onDismiss: () -> Unit,
     onEditClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val categoryName = remember(session.categoryId) {
+        TagSettings.getCategory(context, session.categoryId)?.name ?: ""
+    }
+    val resolvedTags = remember(session.tagIds) {
+        session.tagIds.mapNotNull { TagSettings.getTag(context, it) }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
@@ -72,12 +87,39 @@ fun SessionDetailDialog(
                         session.timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                     )
                     DetailRow("时长", formatTime(session.duration))
-                    DetailRow("地点", session.location.ifEmpty { "未记录" })
-                    DetailRow("道具", session.props.ifEmpty { "无" })
-                    DetailRow("心情", session.mood.ifEmpty { "无" })
+                    DetailRow("分类", categoryName.ifEmpty { "未分类" })
                     DetailRow("评分", "%.1f".format(session.rating))
-                    DetailRow("小电影", if (session.watchedMovie) "是" else "否")
                     DetailRow("高潮", if (session.climax) "是" else "否")
+                }
+
+                if (resolvedTags.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.large)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f))
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            "标签",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            resolvedTags.forEach { tag ->
+                                TagChip(
+                                    name = tag.name,
+                                    color = tag.color,
+                                    icon = tag.icon
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (session.remark.isNotBlank()) {

@@ -46,7 +46,7 @@ import me.neko.nzhelper.ui.component.dialog.DetailsDialog
 import me.neko.nzhelper.feature.history.components.HistoryEmptyState
 import me.neko.nzhelper.feature.history.components.SessionDetailDialog
 import me.neko.nzhelper.feature.history.components.SessionHistoryItem
-import me.neko.nzhelper.core.datastore.CategorySettings
+import me.neko.nzhelper.core.datastore.TagSettings
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -117,12 +117,10 @@ fun HistoryScreen(isActive: Boolean = false) {
                                 isEditing = true
                                 editFormState = SessionFormState(
                                     remark = session.remark,
-                                    location = session.location,
-                                    watchedMovie = session.watchedMovie,
+                                    categoryId = session.categoryId,
+                                    tagIds = session.tagIds.toSet(),
                                     climax = session.climax,
-                                    rating = session.rating,
-                                    mood = session.mood,
-                                    props = session.props
+                                    rating = session.rating
                                 )
                             },
                             onDelete = {
@@ -145,12 +143,10 @@ fun HistoryScreen(isActive: Boolean = false) {
                 isEditing = true
                 editFormState = SessionFormState(
                     remark = selectedSession!!.remark,
-                    location = selectedSession!!.location,
-                    watchedMovie = selectedSession!!.watchedMovie,
+                    categoryId = selectedSession!!.categoryId,
+                    tagIds = selectedSession!!.tagIds.toSet(),
                     climax = selectedSession!!.climax,
-                    rating = selectedSession!!.rating,
-                    mood = selectedSession!!.mood,
-                    props = selectedSession!!.props
+                    rating = selectedSession!!.rating
                 )
             }
         )
@@ -166,22 +162,17 @@ fun HistoryScreen(isActive: Boolean = false) {
             if (index != -1) {
                 val updated = original.copy(
                     remark = editFormState.remark,
-                    location = editFormState.location,
-                    watchedMovie = editFormState.watchedMovie,
                     climax = editFormState.climax,
                     rating = editFormState.rating,
-                    mood = editFormState.mood,
-                    props = editFormState.props
+                    categoryId = editFormState.categoryId.ifBlank { TagSettings.defaultCategory(context).id },
+                    tagIds = editFormState.tagIds.toList()
                 )
                 sessions[index] = updated
                 scope.launch { SessionRepository.saveSessions(context, sessions) }
             }
             isEditing = false; selectedSession = null
         },
-        onDismiss = { isEditing = false; selectedSession = null },
-        locationList = CategorySettings.getLocations(context),
-        propsList = CategorySettings.getProps(context),
-        moodList = CategorySettings.getMoods(context)
+        onDismiss = { isEditing = false; selectedSession = null }
     )
 
     if (showDeleteConfirmDialog && sessionToDelete != null) {

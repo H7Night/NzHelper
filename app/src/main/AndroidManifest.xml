@@ -51,6 +51,9 @@
         <activity
             android:name=".feature.lock.GestureLockSetupActivity"
             android:exported="false" />
+        <activity
+            android:name=".feature.settings.TagManageActivity"
+            android:exported="false" />
 
         <service
             android:name="me.neko.nzhelper.core.service.TimerService"

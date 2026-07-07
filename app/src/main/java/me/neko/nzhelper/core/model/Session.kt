@@ -7,13 +7,21 @@ data class Session(
     @SerializedName("timestamp") val timestamp: LocalDateTime,
     @SerializedName("duration") val duration: Int,
     @SerializedName("remark") val remark: String,
-    @SerializedName("location") val location: String,
-    @SerializedName("watchedMovie") val watchedMovie: Boolean,
-    @SerializedName("climax") val climax: Boolean,
     @SerializedName("rating") val rating: Float,
-    @SerializedName("mood") val mood: String,
-    @SerializedName("props") val props: String
-)
+    @SerializedName("climax") val climax: Boolean,
+    @SerializedName("categoryId") val categoryId: String = DEFAULT_CATEGORY_ID,
+    @SerializedName("tagIds") val tagIds: List<String> = emptyList(),
+
+    // ── legacy（仅兼容旧数据 / 迁移用）──
+    @SerializedName("location") val location: String = "",
+    @SerializedName("watchedMovie") val watchedMovie: Boolean = false,
+    @SerializedName("mood") val mood: String = "",
+    @SerializedName("props") val props: String = ""
+) {
+    companion object {
+        const val DEFAULT_CATEGORY_ID: String = "cat_self"
+    }
+}
 
 data class RecycleBinItem(
     @SerializedName("session") val session: Session,
@@ -21,8 +29,11 @@ data class RecycleBinItem(
 )
 
 data class WebDavBackupPayload(
-    @SerializedName("version") val version: Int = 1,
+    @SerializedName("version") val version: Int = 2,
     @SerializedName("exportedAt") val exportedAt: Long,
     @SerializedName("sessions") val sessions: List<Session> = emptyList(),
-    @SerializedName("recycleBin") val recycleBin: List<RecycleBinItem> = emptyList()
+    @SerializedName("recycleBin") val recycleBin: List<RecycleBinItem> = emptyList(),
+    @SerializedName("categories") val categories: List<CategoryDef> = emptyList(),
+    @SerializedName("tagGroups") val tagGroups: List<TagGroupDef> = emptyList(),
+    @SerializedName("tags") val tags: List<TagDef> = emptyList()
 )

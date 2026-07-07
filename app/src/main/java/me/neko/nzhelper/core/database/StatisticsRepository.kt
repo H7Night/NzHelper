@@ -29,10 +29,11 @@ object StatisticsRepository {
 
     fun calculatePeriodOverview(
         sessions: List<Session>,
+        context: Context,
         now: LocalDateTime,
         type: PeriodType,
         label: String
-    ): PeriodOverview = calcPeriodOverview(sessions, now, type, label)
+    ): PeriodOverview = calcPeriodOverview(sessions, context, now, type, label)
 
     fun calculateLatestInfo(sessions: List<Session>): LatestSessionInfo? =
         calcLatestInfo(sessions)

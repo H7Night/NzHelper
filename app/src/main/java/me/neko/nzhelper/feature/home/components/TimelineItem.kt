@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,14 +24,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.util.formatTime
+import me.neko.nzhelper.ui.component.tag.TagChip
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TimelineItem(
     session: Session,
@@ -43,6 +49,11 @@ fun TimelineItem(
 
     val dateFormatter = remember { DateTimeFormatter.ofPattern("M月d日 EEE", Locale.CHINA) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA) }
+
+    val context = LocalContext.current
+    val resolvedTags = remember(session.tagIds) {
+        session.tagIds.mapNotNull { TagSettings.getTag(context, it) }.take(4)
+    }
 
     Row(
         modifier = modifier
@@ -100,34 +111,23 @@ fun TimelineItem(
 
             Spacer(Modifier.height(4.dp))
 
-            Row(
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = session.timestamp.format(timeFormatter),
                     style = MaterialTheme.typography.labelSmall,
-                    color = onSurfaceVariant
+                    color = onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
-                if (session.mood.isNotEmpty()) {
-                    TimelineTag(
-                        session.mood,
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-                if (session.props.isNotEmpty()) {
-                    TimelineTag(
-                        session.props,
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-                if (session.watchedMovie) {
-                    TimelineTag(
-                        "观影",
-                        MaterialTheme.colorScheme.tertiaryContainer,
-                        MaterialTheme.colorScheme.onTertiaryContainer
+                resolvedTags.forEach { tag ->
+                    TagChip(
+                        name = tag.name,
+                        color = tag.color,
+                        icon = tag.icon,
+                        small = true
                     )
                 }
                 if (session.climax) {

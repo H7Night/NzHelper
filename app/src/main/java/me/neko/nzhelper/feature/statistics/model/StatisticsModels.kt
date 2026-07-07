@@ -28,6 +28,14 @@ data class LatestSessionInfo(
     val isErrorState: Boolean
 )
 
+data class TagStat(
+    val id: String,
+    val name: String,
+    val color: String,
+    val icon: String,
+    val count: Int
+)
+
 data class PeriodOverview(
     val periodLabel: String,
     val count: Int,
@@ -35,23 +43,16 @@ data class PeriodOverview(
     val longestDurationSeconds: Int,
     val longestSessionDisplayDate: String,
     val longestSessionEndTime: String,
-    val mostUsedProps: String,
-    val mostUsedPropsCount: Int,
-    val mostCommonMood: String,
-    val mostCommonMoodCount: Int,
-    val mostCommonLocation: String,
-    val mostCommonLocationCount: Int,
+    val avgDurationSeconds: Int,
     val avgRating: Float,
-    val movieCount: Int,
     val climaxCount: Int,
+    val topTags: List<TagStat>,
     val countComparison: String = "",
     val durationComparison: String = "",
-    val propsComparison: String = "",
-    val moodComparison: String = "",
-    val locationComparison: String = "",
+    val avgDurationComparison: String = "",
     val avgRatingComparison: String = "",
-    val movieComparison: String = "",
-    val climaxComparison: String = ""
+    val climaxComparison: String = "",
+    val topTagsComparison: String = ""
 )
 
 data class HeatmapData(

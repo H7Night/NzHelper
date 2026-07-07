@@ -17,11 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,8 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.model.CategoryDef
 import me.neko.nzhelper.core.model.SessionFormState
 import me.neko.nzhelper.core.util.formatTime
+import me.neko.nzhelper.ui.component.tag.TagPicker
+import me.neko.nzhelper.ui.theme.TagColors
+import me.neko.nzhelper.ui.theme.TagIcons
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.math.roundToInt
@@ -63,13 +70,17 @@ fun DetailsDialog(
     onFormStateChange: (SessionFormState) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    locationList: List<String> = listOf("卧室", "沙发", "厕所"),
-    propsList: List<String> = listOf("手", "飞机杯", "小胶妻"),
-    moodList: List<String> = listOf("平静", "愉悦", "兴奋", "疲惫"),
     showDurationField: Boolean = false,
     title: String = "本次详情"
 ) {
     if (!show) return
+
+    val context = LocalContext.current
+    val categories = remember { TagSettings.getCategories(context) }
+    val groupedTags = remember { TagSettings.groupedTags(context) }
+    val effectiveCategoryId = remember(formState.categoryId) {
+        formState.categoryId.ifBlank { TagSettings.defaultCategory(context).id }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -94,7 +105,7 @@ fun DetailsDialog(
                     textAlign = TextAlign.Center
                 )
 
-                // 手动添加时显示时长输入
+                // 手动添加时显示时长 / 日期时间输入
                 if (showDurationField) {
                     DurationInputSection(
                         formState = formState,
@@ -112,21 +123,42 @@ fun DetailsDialog(
                     )
                 }
 
-                // 地点
-                SelectionSection(
-                    title = "地点",
-                    items = locationList,
-                    selected = formState.location,
-                    onSelected = { onFormStateChange(formState.copy(location = it)) }
+                // 分类（单选）
+                CategorySection(
+                    categories = categories,
+                    selectedId = effectiveCategoryId,
+                    onSelect = { onFormStateChange(formState.copy(categoryId = it)) }
                 )
 
-                // 开关组
-                SwitchSection(
-                    watchedMovie = formState.watchedMovie,
-                    onWatchedMovieChange = { onFormStateChange(formState.copy(watchedMovie = it)) },
-                    climax = formState.climax,
-                    onClimaxChange = { onFormStateChange(formState.copy(climax = it)) }
-                )
+                // 标签（多选）
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "标签",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            "已选 ${formState.tagIds.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TagPicker(
+                        groups = groupedTags,
+                        selectedIds = formState.tagIds,
+                        onToggle = { id ->
+                            val newSet = formState.tagIds.toMutableSet()
+                            if (!newSet.add(id)) newSet.remove(id)
+                            onFormStateChange(formState.copy(tagIds = newSet))
+                        }
+                    )
+                }
 
                 // 评分
                 RatingSection(
@@ -134,20 +166,10 @@ fun DetailsDialog(
                     onRatingChange = { onFormStateChange(formState.copy(rating = it)) }
                 )
 
-                // 道具选择
-                SelectionSection(
-                    title = "道具",
-                    items = propsList,
-                    selected = formState.props,
-                    onSelected = { onFormStateChange(formState.copy(props = it)) }
-                )
-
-                // 心情选择
-                SelectionSection(
-                    title = "心情",
-                    items = moodList,
-                    selected = formState.mood,
-                    onSelected = { onFormStateChange(formState.copy(mood = it)) }
+                // 高潮
+                ClimaxSection(
+                    climax = formState.climax,
+                    onClimaxChange = { onFormStateChange(formState.copy(climax = it)) }
                 )
 
                 // 备注
@@ -186,53 +208,82 @@ fun DetailsDialog(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SwitchSection(
-    watchedMovie: Boolean,
-    onWatchedMovieChange: (Boolean) -> Unit,
-    climax: Boolean,
-    onClimaxChange: (Boolean) -> Unit
+private fun CategorySection(
+    categories: List<CategoryDef>,
+    selectedId: String,
+    onSelect: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "状态",
+            "分类",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold
         )
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            FilterChip(
-                selected = watchedMovie,
-                onClick = { onWatchedMovieChange(!watchedMovie) },
-                label = { Text("小电影") },
-                leadingIcon = if (watchedMovie) {
-                    {
+            categories.forEach { category ->
+                val selected = category.id == selectedId
+                FilterChip(
+                    selected = selected,
+                    onClick = { onSelect(category.id) },
+                    label = { Text(category.name) },
+                    leadingIcon = {
                         Icon(
-                            Icons.Default.Check,
-                            null,
-                            Modifier.size(FilterChipDefaults.IconSize)
+                            imageVector = TagIcons.iconFor(category.icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = if (selected) TagColors.contentColor(category.color)
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                } else null,
-                modifier = Modifier.weight(1f)
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = TagColors.containerColor(category.color),
+                        selectedLabelColor = TagColors.contentColor(category.color),
+                        selectedLeadingIconColor = TagColors.contentColor(category.color)
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClimaxSection(
+    climax: Boolean,
+    onClimaxChange: (Boolean) -> Unit
+) {
+    Card(
+        onClick = {
+            onClimaxChange(!climax)
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "高潮",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            FilterChip(
-                selected = climax,
-                onClick = { onClimaxChange(!climax) },
-                label = { Text("高潮") },
-                leadingIcon = if (climax) {
-                    {
-                        Icon(
-                            Icons.Default.Check,
-                            null,
-                            Modifier.size(FilterChipDefaults.IconSize)
-                        )
-                    }
-                } else null,
-                modifier = Modifier.weight(1f)
+
+            Switch(
+                checked = climax,
+                onCheckedChange = null // 由 Card 统一处理点击
             )
         }
     }
@@ -251,36 +302,6 @@ private fun InputSection(
             fontWeight = FontWeight.SemiBold
         )
         content()
-    }
-}
-
-@Composable
-private fun SelectionSection(
-    title: String,
-    items: List<String>,
-    selected: String,
-    onSelected: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold
-        )
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items.forEach { item ->
-                FilterChip(
-                    selected = selected == item,
-                    onClick = { onSelected(item) },
-                    label = { Text(item) }
-                )
-            }
-        }
     }
 }
 

@@ -1,6 +1,8 @@
 package me.neko.nzhelper.feature.statistics.util
 
 import android.annotation.SuppressLint
+import android.content.Context
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.feature.statistics.model.HeatmapData
 import me.neko.nzhelper.feature.statistics.model.HeatmapDay
@@ -9,6 +11,7 @@ import me.neko.nzhelper.feature.statistics.model.LatestSessionInfo
 import me.neko.nzhelper.feature.statistics.model.PeriodData
 import me.neko.nzhelper.feature.statistics.model.PeriodOverview
 import me.neko.nzhelper.feature.statistics.model.PeriodType
+import me.neko.nzhelper.feature.statistics.model.TagStat
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -279,6 +282,7 @@ private fun getRandomComment(days: Long, isError: Boolean): String {
 @SuppressLint("DefaultLocale")
 fun calculatePeriodOverview(
     sessions: List<Session>,
+    context: Context,
     now: LocalDateTime,
     type: PeriodType,
     label: String
@@ -293,15 +297,16 @@ fun calculatePeriodOverview(
 
     if (filtered.isEmpty()) {
         return PeriodOverview(
-            periodLabel = label, count = 0, totalDurationSeconds = 0,
-            longestDurationSeconds = 0, longestSessionDisplayDate = "",
-            longestSessionEndTime = "", mostUsedProps = "", mostUsedPropsCount = 0,
-            mostCommonMood = "", mostCommonMoodCount = 0,
-            mostCommonLocation = "", mostCommonLocationCount = 0,
-            avgRating = 0f, movieCount = 0, climaxCount = 0,
-            countComparison = "", durationComparison = "",
-            propsComparison = "", moodComparison = "", locationComparison = "",
-            avgRatingComparison = "", movieComparison = "", climaxComparison = ""
+            periodLabel = label,
+            count = 0,
+            totalDurationSeconds = 0,
+            longestDurationSeconds = 0,
+            longestSessionDisplayDate = "",
+            longestSessionEndTime = "",
+            avgDurationSeconds = 0,
+            avgRating = 0f,
+            climaxCount = 0,
+            topTags = emptyList()
         )
     }
 
@@ -347,54 +352,57 @@ fun calculatePeriodOverview(
     val longest = filtered.maxByOrNull { it.duration }!!
     val endDateTime = longest.timestamp.plusSeconds(longest.duration.toLong())
 
-    val mostUsedProps = filtered.groupingBy { it.props }.eachCount().maxByOrNull { it.value }
-    val prevMostUsedProps =
-        prevSessions.groupingBy { it.props }.eachCount().maxByOrNull { it.value }
+    val tagCountsCurrent = mutableMapOf<String, Int>()
+    for (s in filtered) {
+        for (id in s.tagIds) {
+            tagCountsCurrent[id] = (tagCountsCurrent[id] ?: 0) + 1
+        }
+    }
+    val topTags: List<TagStat> = tagCountsCurrent.entries
+        .sortedByDescending { it.value }
+        .take(5)
+        .mapNotNull { (id, count) ->
+            TagSettings.getTag(context, id)?.let { tag ->
+                TagStat(
+                    id = tag.id,
+                    name = tag.name,
+                    color = tag.color,
+                    icon = tag.icon,
+                    count = count
+                )
+            }
+        }
 
-    val propsComparison = if (prevMostUsedProps == null) {
+    val topTagsComparison = if (prevCount == 0) {
         "${prevLabel}无记录"
     } else {
-        val prevPropsName = prevMostUsedProps.key.ifEmpty { "无" }
-        if (prevMostUsedProps.key == mostUsedProps?.key) {
-            "${prevLabel}也为：$prevPropsName (${prevMostUsedProps.value}次)"
+        val prevTagCounts = mutableMapOf<String, Int>()
+        for (s in prevSessions) {
+            for (id in s.tagIds) {
+                prevTagCounts[id] = (prevTagCounts[id] ?: 0) + 1
+            }
+        }
+        val prevTopEntry = prevTagCounts.entries.maxByOrNull { it.value }
+        if (prevTopEntry == null) {
+            "${prevLabel}无记录"
         } else {
-            "${prevLabel}为：$prevPropsName (${prevMostUsedProps.value}次)"
+            val prevTagName = TagSettings.getTag(context, prevTopEntry.key)?.name ?: "已删除"
+            "${prevLabel}最常：$prevTagName (${prevTopEntry.value}次)"
         }
     }
 
-    val mostCommonMood = filtered.groupingBy { it.mood }.eachCount().maxByOrNull { it.value }
-    val prevMostCommonMood =
-        prevSessions.groupingBy { it.mood }.eachCount().maxByOrNull { it.value }
-
-    val moodComparison = if (prevMostCommonMood == null) {
+    val avgDurationSeconds = if (filtered.isNotEmpty()) totalDuration / filtered.size else 0
+    val avgDurationComparison = if (prevCount == 0) {
         "${prevLabel}无记录"
     } else {
-        val prevMoodName = prevMostCommonMood.key.ifEmpty { "无" }
-        if (prevMostCommonMood.key == mostCommonMood?.key) {
-            "${prevLabel}也为：$prevMoodName (${prevMostCommonMood.value}次)"
-        } else {
-            "${prevLabel}为：$prevMoodName (${prevMostCommonMood.value}次)"
-        }
-    }
-
-    val mostCommonLocation = filtered
-        .mapNotNull { it.location.takeIf { it.isNotEmpty() } }
-        .groupingBy { it }
-        .eachCount()
-        .maxByOrNull { it.value }
-    val prevMostCommonLocation = prevSessions
-        .mapNotNull { it.location.takeIf { it.isNotEmpty() } }
-        .groupingBy { it }
-        .eachCount()
-        .maxByOrNull { it.value }
-
-    val locationComparison = if (prevMostCommonLocation == null) {
-        "${prevLabel}无记录"
-    } else {
-        if (prevMostCommonLocation.key == mostCommonLocation?.key) {
-            "${prevLabel}也为：${prevMostCommonLocation.key} (${prevMostCommonLocation.value}次)"
-        } else {
-            "${prevLabel}为：${prevMostCommonLocation.key} (${prevMostCommonLocation.value}次)"
+        val prevAvgDuration = if (prevSessions.isNotEmpty()) {
+            prevTotalDuration / prevSessions.size
+        } else 0
+        val diff = avgDurationSeconds - prevAvgDuration
+        when {
+            diff > 0 -> "较${prevLabel}长 ${formatDuration(diff)}"
+            diff < 0 -> "较${prevLabel}短 ${formatDuration(-diff)}"
+            else -> "与${prevLabel}相同"
         }
     }
 
@@ -408,19 +416,6 @@ fun calculatePeriodOverview(
             diff > 0.05f -> "较${prevLabel}高 ${String.format("%.1f", diff)}"
             diff < -0.05f -> "较${prevLabel}低 ${String.format("%.1f", -diff)}"
             else -> "与${prevLabel}持平"
-        }
-    }
-
-    val movieCount = filtered.count { it.watchedMovie }
-    val movieComparison = if (prevCount == 0) {
-        "${prevLabel}无记录"
-    } else {
-        val prevMovieCount = prevSessions.count { it.watchedMovie }
-        val diff = movieCount - prevMovieCount
-        when {
-            diff > 0 -> "较${prevLabel}多 ${diff}次"
-            diff < 0 -> "较${prevLabel}少 ${-diff}次"
-            else -> "与${prevLabel}相同"
         }
     }
 
@@ -448,23 +443,16 @@ fun calculatePeriodOverview(
         longestSessionEndTime = endDateTime.format(
             DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
         ),
-        mostUsedProps = mostUsedProps?.key ?: "",
-        mostUsedPropsCount = mostUsedProps?.value ?: 0,
-        mostCommonMood = mostCommonMood?.key ?: "",
-        mostCommonMoodCount = mostCommonMood?.value ?: 0,
-        mostCommonLocation = mostCommonLocation?.key ?: "未记录",
-        mostCommonLocationCount = mostCommonLocation?.value ?: 0,
+        avgDurationSeconds = avgDurationSeconds,
         avgRating = avgRating,
-        movieCount = movieCount,
         climaxCount = climaxCount,
+        topTags = topTags,
         countComparison = countComparison,
         durationComparison = durationComparison,
-        propsComparison = propsComparison,
-        moodComparison = moodComparison,
-        locationComparison = locationComparison,
+        avgDurationComparison = avgDurationComparison,
         avgRatingComparison = avgRatingComparison,
-        movieComparison = movieComparison,
-        climaxComparison = climaxComparison
+        climaxComparison = climaxComparison,
+        topTagsComparison = topTagsComparison
     )
 }
 
