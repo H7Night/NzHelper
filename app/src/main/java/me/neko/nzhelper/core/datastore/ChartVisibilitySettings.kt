@@ -12,18 +12,23 @@ object ChartVisibilitySettings {
     private const val KEY_PREFIX = "chart_visible_"
     private const val KEY_ORDER = "chart_order"
 
-    enum class Chart(val key: String, val label: String, val description: String) {
-        TOTAL_STAT("total_stat", "总计概览", "总次数、总时长、平均时长等基础指标"),
-        PERIOD_DASHBOARD("period_dashboard", "周期面板", "本周/本月/本年的快速对比卡片"),
-        HEATMAP("heatmap", "活动热力图", "日历热力图展示活跃天数"),
-        TREND("trend", "趋势分析", "最近 12 周时长变化折线"),
-        DONUT("donut", "分布统计", "标签/分组用量环形占比"),
-        PERIOD_CHART("period_chart", "周期统计", "时长分布对比柱状图"),
-        ACTIVITY_TIME_HEATMAP("activity_time_heatmap", "活跃时间热力图", "工作日与时段活跃度"),
-        MONTHLY_TREND("monthly_trend", "月度趋势", "最近 14 个月趋势与本月预测"),
-        TAG_BAR_CHART("tag_bar_chart", "标签 Top 10", "最常用标签排行"),
-        TAG_COMBO("tag_combo", "高频组合", "标签之间的关联组合"),
-        TAG_TREND("tag_trend", "标签趋势", "近 30 天标签变化对比"),
+    enum class Chart(
+        val key: String,
+        val label: String,
+        val description: String,
+        val defaultVisible: Boolean
+    ) {
+        TOTAL_STAT("total_stat", "总计概览", "总次数、总时长、平均时长等基础指标", true),
+        PERIOD_CHART("period_chart", "周期统计", "时长分布对比柱状图", true),
+        HEATMAP("heatmap", "活动热力图", "日历热力图展示活跃天数", true),
+        TREND("trend", "趋势分析", "最近 12 周时长变化折线", true),
+        PERIOD_DASHBOARD("period_dashboard", "周期面板", "本周/本月/本年的快速对比卡片", false),
+        DONUT("donut", "分布统计", "标签/分组用量环形占比", false),
+        ACTIVITY_TIME_HEATMAP("activity_time_heatmap", "活跃时间热力图", "工作日与时段活跃度", false),
+        MONTHLY_TREND("monthly_trend", "月度趋势", "最近 14 个月趋势与本月预测", false),
+        TAG_BAR_CHART("tag_bar_chart", "标签 Top 10", "最常用标签排行", false),
+        TAG_COMBO("tag_combo", "高频组合", "标签之间的关联组合", false),
+        TAG_TREND("tag_trend", "标签趋势", "近 30 天标签变化对比", false),
     }
 
     private fun prefs(context: Context) =
@@ -32,7 +37,7 @@ object ChartVisibilitySettings {
     private fun keyOf(chart: Chart): String = KEY_PREFIX + chart.key
 
     fun isVisible(context: Context, chart: Chart): Boolean =
-        prefs(context).getBoolean(keyOf(chart), true)
+        prefs(context).getBoolean(keyOf(chart), chart.defaultVisible)
 
     fun setVisible(context: Context, chart: Chart, visible: Boolean) {
         prefs(context).edit { putBoolean(keyOf(chart), visible) }

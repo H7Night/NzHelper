@@ -133,6 +133,10 @@ fun ChartManageScreen(
                     TextButton(onClick = {
                         orderedCharts = ChartVisibilitySettings.Chart.entries.toList()
                         ChartVisibilitySettings.saveOrder(context, orderedCharts)
+                        ChartVisibilitySettings.Chart.entries.forEach { chart ->
+                            visibilityStates[chart] = chart.defaultVisible
+                            ChartVisibilitySettings.setVisible(context, chart, chart.defaultVisible)
+                        }
                     }) {
                         Icon(
                             imageVector = Icons.Outlined.Restore,
@@ -160,7 +164,7 @@ fun ChartManageScreen(
                     ) { chart, dragHandle, _ ->
                         ChartItemRow(
                             chart = chart,
-                            isVisible = visibilityStates[chart] ?: true,
+                            isVisible = visibilityStates[chart] ?: chart.defaultVisible,
                             dragHandle = dragHandle,
                             onToggle = { checked ->
                                 visibilityStates[chart] = checked
