@@ -110,6 +110,7 @@ fun TagManageScreen(onBack: () -> Unit) {
     var editingGroup by remember { mutableStateOf<TagGroupDef?>(null) }
     var addingGroup by remember { mutableStateOf(false) }
     var pendingDeleteGroupId by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteTagId by remember { mutableStateOf<String?>(null) }
     var editingTag by remember { mutableStateOf<TagDef?>(null) }
     var addingTag by remember { mutableStateOf(false) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
@@ -289,10 +290,7 @@ fun TagManageScreen(onBack: () -> Unit) {
                             groups = groups,
                             tags = tags,
                             onEdit = { editingTag = it },
-                            onDelete = { tag ->
-                                TagSettings.deleteTag(context, tag.id)
-                                refresh()
-                            },
+                            onDelete = { tag -> pendingDeleteTagId = tag.id },
                             onReorderTags = { groupId, reordered ->
                                 tags = tags.filterNot { it.groupId == groupId } + reordered
                             },
@@ -383,6 +381,21 @@ fun TagManageScreen(onBack: () -> Unit) {
                 refresh()
             },
             onDismiss = { pendingDeleteGroupId = null }
+        )
+    }
+
+    val pendingTag = tags.firstOrNull { it.id == pendingDeleteTagId }
+    if (pendingTag != null) {
+        ConfirmDialog(
+            title = "删除标签",
+            message = "确定删除「${pendingTag.name}」？历史记录中已使用该标签的记录不受影响。",
+            confirmText = "删除",
+            onConfirm = {
+                TagSettings.deleteTag(context, pendingTag.id)
+                pendingDeleteTagId = null
+                refresh()
+            },
+            onDismiss = { pendingDeleteTagId = null }
         )
     }
 
