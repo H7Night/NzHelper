@@ -61,6 +61,7 @@ import me.neko.nzhelper.core.database.RecycleRepository
 import me.neko.nzhelper.ui.component.dialog.ConfirmDialog
 import me.neko.nzhelper.core.datastore.RecycleBinSettings
 import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.datastore.resolveTags
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
@@ -234,9 +235,10 @@ private fun RecycleBinSessionCard(
         item.session.moods,
         item.session.positions,
         item.session.toys,
-        item.session.ejaculation
+        item.session.ejaculation,
+        item.session.tagSnapshots
     ) {
-        item.session.allTagIds().mapNotNull { TagSettings.getTag(context, it)?.name }
+        item.session.resolveTags(context, item.session.allTagIds()).map { it.name }
     }
 
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }

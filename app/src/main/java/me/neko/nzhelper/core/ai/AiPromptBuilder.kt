@@ -142,8 +142,12 @@ object AiPromptBuilder {
                 .sortedByDescending { it.value }
                 .take(5)
             if (tagCounts.isNotEmpty()) {
+                val snapNames = sessions.flatMap { it.tagSnapshots.orEmpty() }
+                    .associate { it.id to it.name }
                 val tagLines = tagCounts.joinToString("，") { (id, c) ->
-                    val name = allTags.firstOrNull { it.id == id }?.name ?: id
+                    val name = snapNames[id]
+                        ?: allTags.firstOrNull { it.id == id }?.name
+                        ?: id
                     "${name}${c}次"
                 }
                 parts += "常用标签：$tagLines"

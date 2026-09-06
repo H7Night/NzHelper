@@ -27,6 +27,7 @@ object TagSettings {
     private const val KEY_TAGS = "tags"
     private const val KEY_DEFAULTS_SEEDED = "defaults_seeded_v1"
     private const val KEY_DEFAULTS_SEEDED_V3 = "defaults_seeded_v3"
+    private const val KEY_ARCHIVED_TAGS = "archived_tags"
 
     private val gson: Gson get() = NzApplication.gson
 
@@ -360,7 +361,7 @@ object TagSettings {
         runBlocking(Dispatchers.IO) {
             val dao = dao(context)
             val keys = listOf(
-                KEY_CATEGORIES, KEY_GROUPS, KEY_TAGS,
+                KEY_CATEGORIES, KEY_GROUPS, KEY_TAGS, KEY_ARCHIVED_TAGS,
                 KEY_DEFAULTS_SEEDED, KEY_DEFAULTS_SEEDED_V3
             )
             for (key in keys) {
@@ -539,8 +540,11 @@ object TagSettings {
             TagSeed("后背", GROUP_EJACULATE, "person", "sky", pairKeys)
         )
         val existing = getTags(context)
+        val archived = getArchivedTags(context)
         for (seed in seeds) {
-            if (existing.none { it.name == seed.name }) {
+            if (existing.none { it.name == seed.name } &&
+                archived.none { it.name == seed.name }
+            ) {
                 addTag(context, seed.name, seed.groupId, seed.icon, seed.color, seed.modeKeys)
             }
         }
@@ -645,6 +649,14 @@ object TagSettings {
 
     fun getTag(context: Context, id: String): TagDef? =
         getTags(context).firstOrNull { it.id == id }
+            ?: getArchivedTags(context).firstOrNull { it.id == id }
+
+    fun getActiveTag(context: Context, id: String): TagDef? =
+        getTags(context).firstOrNull { it.id == id }
+
+    fun getArchivedTags(context: Context): List<TagDef> =
+        readList<TagDef>(context, KEY_ARCHIVED_TAGS)
+            .map { it.copy(modeKeys = it.modeKeys.orEmpty()) }
 
     fun findTagByName(context: Context, name: String): TagDef? =
         getTags(context).firstOrNull { it.name == name }
@@ -701,9 +713,13 @@ object TagSettings {
 
     fun deleteGroup(context: Context, id: String): Boolean {
         val groups = getGroups(context).filterNot { it.id == id }
+        val removed = getTags(context).filter { it.groupId == id }
         val tags = getTags(context).filterNot { it.groupId == id }
         writeList(context, KEY_GROUPS, groups)
         writeList(context, KEY_TAGS, tags)
+        if (removed.isNotEmpty()) {
+            writeRaw(context, KEY_ARCHIVED_TAGS, gson.toJson(getArchivedTags(context) + removed))
+        }
         return true
     }
 
@@ -756,7 +772,10 @@ object TagSettings {
     }
 
     fun deleteTag(context: Context, id: String) {
-        writeList(context, KEY_TAGS, getTags(context).filterNot { it.id == id })
+        val all = getTags(context)
+        val target = all.firstOrNull { it.id == id } ?: return
+        writeList(context, KEY_TAGS, all.filterNot { it.id == id })
+        writeRaw(context, KEY_ARCHIVED_TAGS, gson.toJson(getArchivedTags(context) + target))
     }
 
     fun reorderTags(context: Context, orderedIds: List<String>) {
@@ -809,6 +828,16 @@ object TagSettings {
         }
     }
 
+    /** 恢复备份时把归档标签合并进本地归档（按 id 去重追加）。 */
+    fun mergeArchivedTags(context: Context, archivedTags: List<TagDef>) {
+        if (archivedTags.isEmpty()) return
+        val cur = getArchivedTags(context).toMutableList()
+        for (t in archivedTags) {
+            if (cur.none { it.id == t.id }) cur += t
+        }
+        writeRaw(context, KEY_ARCHIVED_TAGS, gson.toJson(cur))
+    }
+
     fun migrateLegacySession(context: Context, original: Session): Session {
         val s = Session(
             timestamp = original.timestamp,
@@ -818,6 +847,7 @@ object TagSettings {
             climax = original.climax,
             categoryId = original.categoryId.orEmpty(),
             tagIds = original.tagIds.orEmpty(),
+            tagSnapshots = original.tagSnapshots.orEmpty(),
             mode = original.mode.orEmpty().ifBlank { SessionMode.SOLO_MALE.key },
             climaxCount = original.climaxCount,
             partnerClimaxCount = original.partnerClimaxCount,
@@ -895,3 +925,10 @@ object TagSettings {
 
     private fun uuid(): String = UUID.randomUUID().toString().take(8)
 }
+
+fun Session.resolveTag(context: Context, id: String): TagDef? =
+    tagSnapshots.orEmpty().firstOrNull { it.id == id }
+        ?: TagSettings.getTag(context, id)
+
+fun Session.resolveTags(context: Context, ids: List<String>): List<TagDef> =
+    ids.mapNotNull { resolveTag(context, it) }

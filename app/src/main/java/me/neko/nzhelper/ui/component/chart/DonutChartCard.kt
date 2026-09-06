@@ -81,6 +81,7 @@ fun DonutChartCard(
             val filtered = sessions.filter {
                 isWithinPeriod(it.timestamp, currentTime, PeriodType.YEAR)
             }
+            val snapshots = filtered.flatMap { it.tagSnapshots.orEmpty() }.associateBy { it.id }
             when (selectedTabIndex) {
                 0 -> {
                     val counts = mutableMapOf<String, Int>()
@@ -90,7 +91,7 @@ fun DonutChartCard(
                         }
                     }
                     val resolved = counts.entries.mapNotNull { (id, c) ->
-                        TagSettings.getTag(context, id)?.let { tag ->
+                        (snapshots[id] ?: TagSettings.getTag(context, id))?.let { tag ->
                             DonutSlice(tag.name, c, tag.color)
                         }
                     }
@@ -98,17 +99,18 @@ fun DonutChartCard(
                 }
 
                 1 -> {
-                    val groupCounts = mutableMapOf<String, Int>()
+                    // 按分组名聚合；分组已不存在时归入「其他」
+                    val groupCounts = mutableMapOf<Pair<String, String>, Int>()
                     for (s in filtered) {
                         for (id in s.allTagIds()) {
-                            val tag = TagSettings.getTag(context, id) ?: continue
-                            groupCounts[tag.groupId] = (groupCounts[tag.groupId] ?: 0) + 1
+                            val tag = snapshots[id] ?: TagSettings.getTag(context, id) ?: continue
+                            val g = TagSettings.getGroup(context, tag.groupId)
+                            val key = (g?.name ?: "其他") to (g?.color ?: "slate")
+                            groupCounts[key] = (groupCounts[key] ?: 0) + 1
                         }
                     }
-                    val resolved = groupCounts.entries.mapNotNull { (gid, c) ->
-                        TagSettings.getGroup(context, gid)?.let { g ->
-                            DonutSlice(g.name, c, g.color)
-                        }
+                    val resolved = groupCounts.entries.map { (k, c) ->
+                        DonutSlice(k.first, c, k.second)
                     }
                     buildTopSlices(resolved)
                 }

@@ -14,6 +14,8 @@ data class Session(
     @SerializedName("categoryId") val categoryId: String = DEFAULT_CATEGORY_ID,
     @SerializedName("tagIds") val tagIds: List<String> = emptyList(),
 
+    @SerializedName("tagSnapshots") val tagSnapshots: List<TagDef> = emptyList(),
+
     // ── 记录模式（男性单人 / 女性单人 / 双人）──
     @SerializedName("mode") val mode: String = SessionMode.SOLO_MALE.key,
     @SerializedName("climaxCount") val climaxCount: Int = 0,
@@ -49,7 +51,7 @@ fun Session.sessionMode(): SessionMode = SessionMode.fromKey(mode)
 
 fun Session.allTagIds(): List<String> =
     (tagIds + locations + moods + positions + toys +
-        listOfNotNull(ejaculation.takeIf { it.isNotBlank() })).distinct()
+            listOfNotNull(ejaculation.takeIf { it.isNotBlank() })).distinct()
 
 fun SessionFormState.toSession(
     timestamp: LocalDateTime,
@@ -97,6 +99,7 @@ data class WebDavBackupPayload(
     @SerializedName("categories") val categories: List<CategoryDef> = emptyList(),
     @SerializedName("tagGroups") val tagGroups: List<TagGroupDef> = emptyList(),
     @SerializedName("tags") val tags: List<TagDef> = emptyList(),
+    @SerializedName("archivedTags") val archivedTags: List<TagDef> = emptyList(),
     @SerializedName("aiConfig") val aiConfig: Map<String, String>? = null
 )
 

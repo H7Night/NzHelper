@@ -63,6 +63,7 @@ fun TagComboCard(
             val filtered = sessions.filter {
                 isWithinPeriod(it.timestamp, currentTime, PeriodType.YEAR)
             }
+            val snapshots = filtered.flatMap { it.tagSnapshots.orEmpty() }.associateBy { it.id }
             val setCounts = mutableMapOf<List<String>, Int>()
             for (s in filtered) {
                 if (s.allTagIds().size < 2) continue
@@ -74,7 +75,7 @@ fun TagComboCard(
                 .take(6)
                 .map { (ids, count) ->
                     TagCombo(
-                        tags = ids.mapNotNull { TagSettings.getTag(context, it) },
+                        tags = ids.mapNotNull { snapshots[it] ?: TagSettings.getTag(context, it) },
                         count = count
                     )
                 }

@@ -133,6 +133,7 @@ object BackupRepository {
             categories = if (modules.taxonomy) TagSettings.getCategories(context) else emptyList(),
             tagGroups = if (modules.taxonomy) TagSettings.getGroups(context) else emptyList(),
             tags = if (modules.taxonomy) TagSettings.getTags(context) else emptyList(),
+            archivedTags = if (modules.taxonomy) TagSettings.getArchivedTags(context) else emptyList(),
             aiConfig = aiConfigMap
         )
         val json = gson.toJson(payload)
@@ -172,6 +173,7 @@ object BackupRepository {
                 payload.tagGroups,
                 payload.tags
             )
+            TagSettings.mergeArchivedTags(context, payload.archivedTags)
         }
 
         if (modules.aiConfig && !payload.aiConfig.isNullOrEmpty()) {

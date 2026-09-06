@@ -48,7 +48,7 @@ object AutoTagRules {
         val hour = timestamp.hour
         HOUR_RULES.firstOrNull { hour in it.startHour until it.endHour }
             ?.let { rule ->
-                if (TagSettings.getTag(context, rule.tagId) != null) {
+                if (TagSettings.getActiveTag(context, rule.tagId) != null) {
                     result += rule.tagId
                 }
             }
@@ -58,7 +58,7 @@ object AutoTagRules {
         val isWeekend = timestamp.dayOfWeek == DayOfWeek.SATURDAY ||
                 timestamp.dayOfWeek == DayOfWeek.SUNDAY
         val dayTagId = if (isWeekend) weekendId else weekdayId
-        if (TagSettings.getTag(context, dayTagId) != null) {
+        if (TagSettings.getActiveTag(context, dayTagId) != null) {
             result += dayTagId
         }
 

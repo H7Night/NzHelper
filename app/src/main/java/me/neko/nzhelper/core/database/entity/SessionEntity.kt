@@ -12,6 +12,7 @@ data class SessionEntity(
     val climax: Boolean,
     val categoryId: String,
     val tagIdsJson: String,
+    val tagSnapshotsJson: String,
     val mode: String,
     val climaxCount: Int,
     val partnerClimaxCount: Int,

@@ -6,12 +6,14 @@ import me.neko.nzhelper.core.database.entity.RecycleBinEntity
 import me.neko.nzhelper.core.database.entity.SessionEntity
 import me.neko.nzhelper.core.model.RecycleBinItem
 import me.neko.nzhelper.core.model.Session
+import me.neko.nzhelper.core.model.TagDef
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 internal object Mappers {
 
     private val stringListType = object : TypeToken<List<String>>() {}.type
+    private val tagDefListType = object : TypeToken<List<TagDef>>() {}.type
 
     fun sessionToEntity(s: Session, gson: Gson): SessionEntity = SessionEntity(
         timestampIso = s.timestamp.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
@@ -21,6 +23,7 @@ internal object Mappers {
         climax = false,
         categoryId = s.categoryId,
         tagIdsJson = gson.toJson(s.tagIds, stringListType),
+        tagSnapshotsJson = gson.toJson(s.tagSnapshots, tagDefListType),
         mode = s.mode,
         climaxCount = s.climaxCount,
         partnerClimaxCount = s.partnerClimaxCount,
@@ -48,6 +51,7 @@ internal object Mappers {
         climax = e.climax,
         categoryId = e.categoryId,
         tagIds = gson.fromJson<List<String>>(e.tagIdsJson, stringListType) ?: emptyList(),
+        tagSnapshots = gson.fromJson<List<TagDef>>(e.tagSnapshotsJson, tagDefListType) ?: emptyList(),
         mode = e.mode,
         climaxCount = e.climaxCount,
         partnerClimaxCount = e.partnerClimaxCount,

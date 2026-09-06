@@ -34,6 +34,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.datastore.resolveTag
+import me.neko.nzhelper.core.datastore.resolveTags
 import me.neko.nzhelper.core.model.Contraception
 import me.neko.nzhelper.core.model.PartnerGender
 import me.neko.nzhelper.core.model.Session
@@ -57,15 +59,16 @@ fun SessionDetailDialog(
     }
     val resolvedTags = remember(
         session.tagIds, session.locations, session.moods, session.positions, session.toys,
-        session.ejaculation
+        session.ejaculation, session.tagSnapshots
     ) {
-        session.allTagIds().mapNotNull { TagSettings.getTag(context, it) }
+        session.resolveTags(context, session.allTagIds())
     }
-    val partnerNames = remember(session.partners) {
-        session.partners.mapNotNull { TagSettings.getTag(context, it)?.name }.joinToString("、")
+    val partnerNames = remember(session.partners, session.tagSnapshots) {
+        session.resolveTags(context, session.partners).joinToString("、") { it.name }
     }
-    val ejaculationName = remember(session.ejaculation) {
-        session.ejaculation.takeIf { it.isNotBlank() }?.let { TagSettings.getTag(context, it)?.name }
+    val ejaculationName = remember(session.ejaculation, session.tagSnapshots) {
+        session.ejaculation.takeIf { it.isNotBlank() }
+            ?.let { session.resolveTag(context, it)?.name }
     }
 
     Dialog(onDismissRequest = onDismiss) {

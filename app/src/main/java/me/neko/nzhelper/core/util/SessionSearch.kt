@@ -2,6 +2,7 @@ package me.neko.nzhelper.core.util
 
 import android.content.Context
 import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.datastore.resolveTags
 import me.neko.nzhelper.core.model.Contraception
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.model.SessionMode
@@ -51,7 +52,7 @@ object SessionSearch {
         if (session.remark.lowercase(Locale.getDefault()).contains(kw)) return true
 
         // 标签名（含地点、情绪、体位、情趣玩具）
-        val tagNames = session.allTagIds().mapNotNull { TagSettings.getTag(context, it)?.name }
+        val tagNames = session.resolveTags(context, session.allTagIds()).map { it.name }
         if (tagNames.any { it.lowercase(Locale.getDefault()).contains(kw) }) return true
 
         // 分类名

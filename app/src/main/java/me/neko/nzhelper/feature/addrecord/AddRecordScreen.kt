@@ -62,6 +62,7 @@ import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.model.SessionFormState
 import me.neko.nzhelper.core.model.SessionMode
+import me.neko.nzhelper.core.model.allTagIds
 import me.neko.nzhelper.core.model.toSession
 import me.neko.nzhelper.core.service.TimerService
 import me.neko.nzhelper.feature.addrecord.components.BasicInfoPage
@@ -256,6 +257,14 @@ fun AddRecordScreen(
         val effectiveCategoryId =
             formState.categoryId.ifBlank { TagSettings.defaultCategory(context).id }
 
+        fun withTagSnapshots(session: Session): Session {
+            val active = TagSettings.getTags(context)
+            val snapshots = session.allTagIds().mapNotNull { id ->
+                active.firstOrNull { it.id == id }
+            }
+            return session.copy(tagSnapshots = snapshots)
+        }
+
         when (flow) {
             AddRecordFlow.TIMER -> {
                 finished = true
@@ -265,11 +274,13 @@ fun AddRecordScreen(
                     val (merged, added) = AutoTagRules.merge(formState.tagIds, suggested)
                     merged to (formState.autoTagIds + added)
                 }
-                val session = formState.toSession(
-                    timestamp = nowTime,
-                    duration = elapsedSeconds,
-                    categoryId = effectiveCategoryId,
-                    tagIds = finalTags.first.toList()
+                val session = withTagSnapshots(
+                    formState.toSession(
+                        timestamp = nowTime,
+                        duration = elapsedSeconds,
+                        categoryId = effectiveCategoryId,
+                        tagIds = finalTags.first.toList()
+                    )
                 )
                 scope.launch {
                     val sessions = SessionRepository.loadSessions(context).toMutableList()
@@ -296,11 +307,13 @@ fun AddRecordScreen(
                     return
                 }
                 finished = true
-                val session = formState.toSession(
-                    timestamp = timestamp,
-                    duration = duration,
-                    categoryId = effectiveCategoryId,
-                    tagIds = formState.tagIds.toList()
+                val session = withTagSnapshots(
+                    formState.toSession(
+                        timestamp = timestamp,
+                        duration = duration,
+                        categoryId = effectiveCategoryId,
+                        tagIds = formState.tagIds.toList()
+                    )
                 )
                 scope.launch {
                     val sessions = SessionRepository.loadSessions(context).toMutableList()
@@ -326,26 +339,28 @@ fun AddRecordScreen(
                 }
                 finished = true
                 val isPair = SessionMode.fromKey(formState.mode).isPair
-                val updated = original.copy(
-                    timestamp = timestamp,
-                    duration = duration,
-                    remark = formState.remark,
-                    rating = formState.rating,
-                    categoryId = effectiveCategoryId,
-                    tagIds = formState.tagIds.toList(),
-                    mode = formState.mode,
-                    climaxCount = formState.climaxCount,
-                    partnerClimaxCount = if (isPair) formState.partnerClimaxCount else 0,
-                    partnerGender = if (isPair) formState.partnerGender else "",
-                    partnerName = if (isPair) formState.partnerName else "",
-                    contraception = if (isPair) formState.contraception else "",
-                    partners = if (isPair) formState.partners.toList() else emptyList(),
-                    initiator = if (isPair) formState.initiator else "",
-                    locations = formState.locations.toList(),
-                    moods = formState.moods.toList(),
-                    positions = if (isPair) formState.positions.toList() else emptyList(),
-                    toys = if (isPair) formState.toys.toList() else emptyList(),
-                    ejaculation = if (isPair) formState.ejaculation else ""
+                val updated = withTagSnapshots(
+                    original.copy(
+                        timestamp = timestamp,
+                        duration = duration,
+                        remark = formState.remark,
+                        rating = formState.rating,
+                        categoryId = effectiveCategoryId,
+                        tagIds = formState.tagIds.toList(),
+                        mode = formState.mode,
+                        climaxCount = formState.climaxCount,
+                        partnerClimaxCount = if (isPair) formState.partnerClimaxCount else 0,
+                        partnerGender = if (isPair) formState.partnerGender else "",
+                        partnerName = if (isPair) formState.partnerName else "",
+                        contraception = if (isPair) formState.contraception else "",
+                        partners = if (isPair) formState.partners.toList() else emptyList(),
+                        initiator = if (isPair) formState.initiator else "",
+                        locations = formState.locations.toList(),
+                        moods = formState.moods.toList(),
+                        positions = if (isPair) formState.positions.toList() else emptyList(),
+                        toys = if (isPair) formState.toys.toList() else emptyList(),
+                        ejaculation = if (isPair) formState.ejaculation else ""
+                    )
                 )
                 scope.launch {
                     val sessions = SessionRepository.loadSessions(context).toMutableList()

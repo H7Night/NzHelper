@@ -526,11 +526,12 @@ fun calculatePeriodOverview(
             tagCountsCurrent[id] = (tagCountsCurrent[id] ?: 0) + 1
         }
     }
+    val currentSnapshots = filtered.flatMap { it.tagSnapshots.orEmpty() }.associateBy { it.id }
     val topTags: List<TagStat> = tagCountsCurrent.entries
         .sortedByDescending { it.value }
         .take(5)
         .mapNotNull { (id, count) ->
-            TagSettings.getTag(context, id)?.let { tag ->
+            (currentSnapshots[id] ?: TagSettings.getTag(context, id))?.let { tag ->
                 TagStat(
                     id = tag.id,
                     name = tag.name,
@@ -550,11 +551,14 @@ fun calculatePeriodOverview(
                 prevTagCounts[id] = (prevTagCounts[id] ?: 0) + 1
             }
         }
+        val prevSnapshots = prevSessions.flatMap { it.tagSnapshots.orEmpty() }.associateBy { it.id }
         val prevTopEntry = prevTagCounts.entries.maxByOrNull { it.value }
         if (prevTopEntry == null) {
             "${prevLabel}无记录"
         } else {
-            val prevTagName = TagSettings.getTag(context, prevTopEntry.key)?.name ?: "已删除"
+            val prevTagName = prevSnapshots[prevTopEntry.key]?.name
+                ?: TagSettings.getTag(context, prevTopEntry.key)?.name
+                ?: "已删除"
             "${prevLabel}最常：$prevTagName (${prevTopEntry.value}次)"
         }
     }
@@ -778,9 +782,10 @@ fun calculateTagTrendData(
         }
     }
 
+    val snapshots = sessions.flatMap { it.tagSnapshots.orEmpty() }.associateBy { it.id }
     val allIds = (recent.keys + previous.keys)
     val items = allIds.mapNotNull { id ->
-        val tag = TagSettings.getTag(context, id) ?: return@mapNotNull null
+        val tag = snapshots[id] ?: TagSettings.getTag(context, id) ?: return@mapNotNull null
         val r = recent[id] ?: 0
         val p = previous[id] ?: 0
         val (pct, dir) = when (p) {

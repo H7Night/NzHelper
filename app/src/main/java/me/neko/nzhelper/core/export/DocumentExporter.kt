@@ -237,7 +237,17 @@ object DocumentExporter {
                 sessionRow(s, categoryNames, tagNames)
             }
         return ReportBlock.Table(
-            headers = listOf("日期", "模式", "时长", "评分", "高潮", "对方", "分类", "标签", "备注"),
+            headers = listOf(
+                "日期",
+                "模式",
+                "时长",
+                "评分",
+                "高潮",
+                "对方",
+                "分类",
+                "标签",
+                "备注"
+            ),
             rows = rows,
             weights = listOf(80f, 42f, 40f, 30f, 40f, 96f, 42f, 86f, 96f)
         )
@@ -267,26 +277,34 @@ object DocumentExporter {
         s: Session,
         categoryNames: Map<String, String>,
         tagNames: Map<String, String>
-    ): List<String> = listOf(
-        s.timestamp.format(dateTimeFormat),
-        s.sessionMode().label,
-        formatDuration(s.duration),
-        "%.1f".format(s.rating),
-        if (s.sessionMode() == SessionMode.PAIR) {
-            "${s.climaxCount}/${s.partnerClimaxCount}"
-        } else {
-            "${s.climaxCount}"
-        },
-        pairDetails(s, tagNames) ?: "—",
-        categoryNames[s.categoryId]?.takeIf { it.isNotBlank() } ?: "未分类",
-        s.allTagIds().mapNotNull { tagNames[it] }.joinToString("、").ifEmpty { "—" },
-        s.remark.trim().ifEmpty { "—" }
-    )
+    ): List<String> {
+        val snapNames = s.tagSnapshots.orEmpty().associate { it.id to it.name }
+        return listOf(
+            s.timestamp.format(dateTimeFormat),
+            s.sessionMode().label,
+            formatDuration(s.duration),
+            "%.1f".format(s.rating),
+            if (s.sessionMode() == SessionMode.PAIR) {
+                "${s.climaxCount}/${s.partnerClimaxCount}"
+            } else {
+                "${s.climaxCount}"
+            },
+            pairDetails(s, tagNames, snapNames) ?: "—",
+            categoryNames[s.categoryId]?.takeIf { it.isNotBlank() } ?: "未分类",
+            s.allTagIds().mapNotNull { snapNames[it] ?: tagNames[it] }
+                .joinToString("、").ifEmpty { "—" },
+            s.remark.trim().ifEmpty { "—" }
+        )
+    }
 
-    private fun pairDetails(s: Session, tagNames: Map<String, String>): String? {
+    private fun pairDetails(
+        s: Session,
+        tagNames: Map<String, String>,
+        snapNames: Map<String, String>
+    ): String? {
         if (s.sessionMode() != SessionMode.PAIR) return null
         val parts = mutableListOf<String>()
-        val partners = s.partners.mapNotNull { tagNames[it] }.joinToString("、")
+        val partners = s.partners.mapNotNull { snapNames[it] ?: tagNames[it] }.joinToString("、")
         if (partners.isNotEmpty()) parts += "伴侣：$partners"
         if (s.initiator.isNotBlank()) parts += "发起者：${s.initiator}"
         PartnerGender.fromKey(s.partnerGender)?.let { parts += "对方性别：${it.label}" }

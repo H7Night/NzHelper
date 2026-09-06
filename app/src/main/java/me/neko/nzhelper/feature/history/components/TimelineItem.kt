@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.neko.nzhelper.core.datastore.TagSettings
+import me.neko.nzhelper.core.datastore.resolveTags
 import me.neko.nzhelper.core.model.Session
 import me.neko.nzhelper.core.model.SessionMode
 import me.neko.nzhelper.core.model.allTagIds
@@ -85,9 +86,9 @@ fun TimelineItem(
     val context = LocalContext.current
     val resolvedTags = remember(
         session.tagIds, session.locations, session.moods, session.positions, session.toys,
-        session.ejaculation
+        session.ejaculation, session.tagSnapshots
     ) {
-        session.allTagIds().mapNotNull { TagSettings.getTag(context, it) }.take(4)
+        session.resolveTags(context, session.allTagIds()).take(4)
     }
 
     val showActions = onDelete != null
