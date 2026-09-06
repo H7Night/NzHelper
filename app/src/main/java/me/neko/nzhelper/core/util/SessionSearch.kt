@@ -1,10 +1,9 @@
 package me.neko.nzhelper.core.util
 
-import android.content.Context
-import me.neko.nzhelper.core.datastore.TagSettings
-import me.neko.nzhelper.core.datastore.resolveTags
+import me.neko.nzhelper.core.model.CategoryDef
 import me.neko.nzhelper.core.model.Contraception
 import me.neko.nzhelper.core.model.Session
+import me.neko.nzhelper.core.model.TagDef
 import me.neko.nzhelper.core.model.SessionMode
 import me.neko.nzhelper.core.model.allTagIds
 import me.neko.nzhelper.core.model.sessionMode
@@ -30,7 +29,8 @@ object SessionSearch {
     private val CN_LOCALE = Locale.CHINA
 
     fun filter(
-        context: Context,
+        tagDefs: Map<String, TagDef>,
+        categoryDefs: Map<String, CategoryDef>,
         sessions: List<Session>,
         query: String
     ): List<Session> {
@@ -43,20 +43,27 @@ object SessionSearch {
         if (keywords.isEmpty()) return sessions
 
         return sessions.filter { session ->
-            keywords.all { kw -> matchKeyword(context, session, kw) }
+            keywords.all { kw -> matchKeyword(tagDefs, categoryDefs, session, kw) }
         }
     }
 
-    private fun matchKeyword(context: Context, session: Session, kw: String): Boolean {
+    private fun matchKeyword(
+        tagDefs: Map<String, TagDef>,
+        categoryDefs: Map<String, CategoryDef>,
+        session: Session,
+        kw: String
+    ): Boolean {
         // 备注
         if (session.remark.lowercase(Locale.getDefault()).contains(kw)) return true
 
         // 标签名（含地点、情绪、体位、情趣玩具）
-        val tagNames = session.resolveTags(context, session.allTagIds()).map { it.name }
+        val tagNames = session.allTagIds().mapNotNull { id ->
+            tagDefs[id] ?: session.tagSnapshots.orEmpty().firstOrNull { it.id == id }
+        }.map { it.name }
         if (tagNames.any { it.lowercase(Locale.getDefault()).contains(kw) }) return true
 
         // 分类名
-        val categoryName = TagSettings.getCategory(context, session.categoryId)?.name ?: ""
+        val categoryName = categoryDefs[session.categoryId]?.name ?: ""
         if (categoryName.lowercase(Locale.getDefault()).contains(kw)) return true
 
         // 日期文本

@@ -1,7 +1,13 @@
 package me.neko.nzhelper.feature.history.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +16,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,28 +27,31 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.StarRate
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentNeutral
+import androidx.compose.material.icons.outlined.SentimentVerySatisfied
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import me.neko.nzhelper.core.datastore.TagSettings
-import me.neko.nzhelper.core.datastore.resolveTags
 import me.neko.nzhelper.core.model.Session
+import me.neko.nzhelper.core.model.TagDef
 import me.neko.nzhelper.core.model.SessionMode
 import me.neko.nzhelper.core.model.allTagIds
 import me.neko.nzhelper.core.model.sessionMode
 import me.neko.nzhelper.core.util.formatTime
+import me.neko.nzhelper.ui.component.setting.SettingsCornerRadius
 import me.neko.nzhelper.ui.component.tag.TagChip
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -55,14 +63,13 @@ import java.util.Locale
 fun TimelineItem(
     modifier: Modifier = Modifier,
     session: Session,
+    tagDefs: Map<String, TagDef>,
     isFirst: Boolean,
     isLast: Boolean,
     onClick: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
     val primary = MaterialTheme.colorScheme.primary
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val outline = MaterialTheme.colorScheme.outlineVariant
     val onSurface = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -76,46 +83,52 @@ fun TimelineItem(
             0 -> "今天"
             1 -> "昨天"
             2 -> "前天"
-            else -> sessionDate.format(DateTimeFormatter.ofPattern("M月d日 EEE", Locale.CHINA))
+            else -> sessionDate.format(
+                DateTimeFormatter.ofPattern(
+                    "yyyy年M月d日 EEE",
+                    Locale.CHINA
+                )
+            )
         }
     }
     val timeText = remember(session.timestamp) {
         session.timestamp.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
     }
 
-    val context = LocalContext.current
     val resolvedTags = remember(
         session.tagIds, session.locations, session.moods, session.positions, session.toys,
-        session.ejaculation, session.tagSnapshots
+        session.ejaculation, session.tagSnapshots, tagDefs
     ) {
-        session.resolveTags(context, session.allTagIds()).take(4)
+        session.allTagIds().mapNotNull { id ->
+            tagDefs[id] ?: session.tagSnapshots.orEmpty().firstOrNull { it.id == id }
+        }.take(5)
     }
 
     val showActions = onDelete != null
-    val largeRadius = MaterialTheme.shapes.large.topStart
-    val smallRadius = MaterialTheme.shapes.extraSmall.topStart
+    val largeRadius = 16.dp
+    val smallRadius = 4.dp
 
-    val shape = when {
-        isFirst && isLast -> RoundedCornerShape(
-            topStart = largeRadius, topEnd = largeRadius,
-            bottomStart = largeRadius, bottomEnd = largeRadius
-        )
-
-        isFirst -> RoundedCornerShape(
-            topStart = largeRadius, topEnd = largeRadius,
-            bottomStart = smallRadius, bottomEnd = smallRadius
-        )
-
-        isLast -> RoundedCornerShape(
-            topStart = smallRadius, topEnd = smallRadius,
-            bottomStart = largeRadius, bottomEnd = largeRadius
-        )
-
-        else -> RoundedCornerShape(
-            topStart = smallRadius, topEnd = smallRadius,
-            bottomStart = smallRadius, bottomEnd = smallRadius
-        )
-    }
+    val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val topRadius by animateDpAsState(
+        targetValue = if (pressed) SettingsCornerRadius
+        else if (isFirst) largeRadius else smallRadius,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "timelineItemTopRadius"
+    )
+    val bottomRadius by animateDpAsState(
+        targetValue = if (pressed) SettingsCornerRadius
+        else if (isLast) largeRadius else smallRadius,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "timelineItemBottomRadius"
+    )
+    val shape = RoundedCornerShape(
+        topStart = topRadius,
+        topEnd = topRadius,
+        bottomEnd = bottomRadius,
+        bottomStart = bottomRadius
+    )
 
     Row(
         modifier = modifier
@@ -126,66 +139,17 @@ fun TimelineItem(
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
-                        interactionSource = null,
-                        indication = ripple(),
-                        onClick = onClick
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            onClick()
+                        }
                     )
                 } else Modifier
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .width(28.dp)
-                .fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (isToday) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 3.dp)
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onPrimary)
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(primary.copy(alpha = 0.6f))
-                    )
-                }
-            }
-            if (!isLast) {
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .weight(1f)
-                        .background(outline.copy(alpha = 0.6f))
-                )
-            }
-        }
-
-        Spacer(Modifier.width(10.dp))
-
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -203,13 +167,14 @@ fun TimelineItem(
                     Text(
                         text = relativeDate,
                         style = MaterialTheme.typography.titleSmall,
-                        color = if (isToday) primary else onSurface
+                        color = if (isToday) primary else onSurface,
+                        fontWeight = FontWeight.Normal
                     )
                     Text(
                         text = timeText,
                         style = MaterialTheme.typography.titleSmall,
                         color = onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Normal
                     )
                 }
 
@@ -251,7 +216,7 @@ fun TimelineItem(
                         imageVector = Icons.Outlined.Schedule,
                         contentDescription = null,
                         tint = durationColor,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = formatTime(session.duration),
@@ -262,17 +227,21 @@ fun TimelineItem(
                 if (session.rating > 0f) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(1.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.StarRate,
+                            imageVector = when {
+                                session.rating < 3.0f -> Icons.Outlined.SentimentDissatisfied
+                                session.rating == 3.0f -> Icons.Outlined.SentimentNeutral
+                                else -> Icons.Outlined.SentimentVerySatisfied
+                            },
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "%.1f".format(session.rating),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Medium
                         )

@@ -3,6 +3,7 @@ package me.neko.nzhelper.feature.history
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -14,10 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -42,16 +46,17 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.neko.nzhelper.core.database.RecycleRepository
 import me.neko.nzhelper.core.database.SessionRepository
+import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.Session
-import me.neko.nzhelper.core.model.SessionMode
-import me.neko.nzhelper.core.model.sessionMode
 import me.neko.nzhelper.core.util.SessionSearch
 import me.neko.nzhelper.feature.history.components.HistoryEmptyState
+import me.neko.nzhelper.feature.history.components.HistoryFilterSheet
 import me.neko.nzhelper.feature.history.components.HistoryQuickFilter
 import me.neko.nzhelper.feature.history.components.HistorySearchBar
 import me.neko.nzhelper.feature.history.components.HistorySearchEmptyState
 import me.neko.nzhelper.feature.history.components.SessionDetailDialog
 import me.neko.nzhelper.feature.history.components.TimelineItem
+import me.neko.nzhelper.feature.history.components.matches
 import me.neko.nzhelper.ui.component.dialog.ConfirmDialog
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -70,7 +75,8 @@ fun HistoryScreen(
     var isLoading by remember { mutableStateOf(true) }
 
     var searchQuery by remember { mutableStateOf("") }
-    var activeFilter by remember { mutableStateOf(HistoryQuickFilter.ALL) }
+    var activeFilters by remember { mutableStateOf(setOf(HistoryQuickFilter.ALL)) }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var sessionToDelete by remember { mutableStateOf<Session?>(null) }
@@ -88,19 +94,22 @@ fun HistoryScreen(
         }
     }
 
-    val filteredSessions by remember(sessions, searchQuery, activeFilter) {
+    val tagDefs = remember(sessions) {
+        TagSettings.getTags(context).associateBy { it.id }
+    }
+    val categoryDefs = remember(sessions) {
+        TagSettings.getCategories(context).associateBy { it.id }
+    }
+
+    val filteredSessions by remember(sessions, searchQuery, activeFilters) {
         derivedStateOf {
-            val byText = SessionSearch.filter(context, sessions, searchQuery)
-            when (activeFilter) {
-                HistoryQuickFilter.ALL -> byText
-                HistoryQuickFilter.CLIMAX -> byText.filter { it.climaxCount > 0 }
-                HistoryQuickFilter.NO_CLIMAX -> byText.filter { it.climaxCount == 0 }
-                HistoryQuickFilter.MODE_SOLO_MALE ->
-                    byText.filter { it.sessionMode() == SessionMode.SOLO_MALE }
-                HistoryQuickFilter.MODE_SOLO_FEMALE ->
-                    byText.filter { it.sessionMode() == SessionMode.SOLO_FEMALE }
-                HistoryQuickFilter.MODE_PAIR ->
-                    byText.filter { it.sessionMode() == SessionMode.PAIR }
+            val byText = SessionSearch.filter(tagDefs, categoryDefs, sessions, searchQuery)
+            if (activeFilters.isEmpty() || HistoryQuickFilter.ALL in activeFilters) {
+                byText
+            } else {
+                byText.filter { session ->
+                    activeFilters.any { filter -> session.matches(filter) }
+                }
             }
         }
     }
@@ -110,6 +119,19 @@ fun HistoryScreen(
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text("历史记录") },
+                actions = {
+                    IconButton(onClick = { showFilterSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.FilterList,
+                            contentDescription = "筛选记录",
+                            tint = if (HistoryQuickFilter.ALL !in activeFilters) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -119,66 +141,77 @@ fun HistoryScreen(
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
         ) {
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (sessions.isEmpty()) {
-                HistoryEmptyState()
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    item {
-                        HistorySearchBar(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            activeFilter = activeFilter,
-                            onFilterChange = { activeFilter = it },
-                            resultCount = filteredSessions.size,
-                            totalCount = sessions.size
-                        )
-                    }
+            if (!isLoading && sessions.isNotEmpty()) {
+                HistorySearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    activeFilters = activeFilters,
+                    resultCount = filteredSessions.size,
+                    totalCount = sessions.size,
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 4.dp)
+                )
+            }
 
-                    if (filteredSessions.isEmpty()) {
-                        item {
-                            HistorySearchEmptyState(
-                                query = searchQuery,
-                                onClearSearch = {
-                                    searchQuery = ""
-                                    activeFilter = HistoryQuickFilter.ALL
-                                }
-                            )
-                        }
-                    } else {
-                        itemsIndexed(
-                            filteredSessions,
-                            key = { _, session -> session.timestamp.toString() }) { index, session ->
-                            TimelineItem(
-                                session = session,
-                                isFirst = index == 0,
-                                isLast = index == filteredSessions.lastIndex,
-                                onClick = {
-                                    selectedSession = session
-                                    isViewingDetails = true
-                                },
-                                onDelete = {
-                                    sessionToDelete = session
-                                    showDeleteConfirmDialog = true
-                                }
-                            )
+            Box(modifier = Modifier.weight(1f)) {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (sessions.isEmpty()) {
+                    HistoryEmptyState()
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 4.dp,
+                            bottom = 16.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        if (filteredSessions.isEmpty()) {
+                            item {
+                                HistorySearchEmptyState(
+                                    query = searchQuery,
+                                    onClearSearch = {
+                                        searchQuery = ""
+                                        activeFilters = setOf(HistoryQuickFilter.ALL)
+                                    }
+                                )
+                            }
+                        } else {
+                            itemsIndexed(
+                                filteredSessions,
+                                key = { _, session -> session.timestamp.toString() }) { index, session ->
+                                TimelineItem(
+                                    session = session,
+                                    tagDefs = tagDefs,
+                                    isFirst = index == 0,
+                                    isLast = index == filteredSessions.lastIndex,
+                                    onClick = {
+                                        selectedSession = session
+                                        isViewingDetails = true
+                                    },
+                                    onDelete = {
+                                        sessionToDelete = session
+                                        showDeleteConfirmDialog = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -196,6 +229,14 @@ fun HistoryScreen(
                 selectedSession = null
                 if (target != null) onEditRecord(target)
             }
+        )
+    }
+
+    if (showFilterSheet) {
+        HistoryFilterSheet(
+            activeFilters = activeFilters,
+            onConfirm = { activeFilters = it },
+            onDismiss = { showFilterSheet = false }
         )
     }
 

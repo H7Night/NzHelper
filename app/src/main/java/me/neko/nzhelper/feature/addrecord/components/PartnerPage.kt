@@ -1,10 +1,7 @@
 package me.neko.nzhelper.feature.addrecord.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import me.neko.nzhelper.core.datastore.TagSettings
 import me.neko.nzhelper.core.model.SessionFormState
 import me.neko.nzhelper.core.model.SessionMode

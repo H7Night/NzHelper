@@ -1,4 +1,4 @@
-package me.neko.nzhelper.feature.settings.components
+package me.neko.nzhelper.feature.history.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,16 +7,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Female
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Male
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -25,20 +29,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import me.neko.nzhelper.core.model.SessionMode
 import me.neko.nzhelper.ui.component.setting.SettingsCard
 import me.neko.nzhelper.ui.component.setting.SettingsItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordModePickerBottomSheet(
-    currentMode: SessionMode,
-    onConfirm: (SessionMode) -> Unit,
+fun HistoryFilterSheet(
+    activeFilters: Set<HistoryQuickFilter>,
+    onConfirm: (Set<HistoryQuickFilter>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var selected by remember { mutableStateOf(currentMode) }
+    var selection by remember(activeFilters) { mutableStateOf(activeFilters) }
 
     @Suppress("DEPRECATION")
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -47,43 +50,45 @@ fun RecordModePickerBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.extraLarge
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "默认记录模式",
+                text = "筛选记录",
                 style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             SettingsCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-                SessionMode.entries.forEach { mode ->
-                    val isSelected = selected == mode
+                HistoryQuickFilter.entries.forEach { filter ->
+                    val isSelected = filter in selection
                     item {
                         SettingsItem(
-                            icon = when (mode) {
-                                SessionMode.SOLO_MALE -> Icons.Outlined.Male
-                                SessionMode.SOLO_FEMALE -> Icons.Outlined.Female
-                                SessionMode.PAIR -> Icons.Outlined.FavoriteBorder
-                            },
-                            title = mode.label,
-                            subtitle = when (mode) {
-                                SessionMode.SOLO_MALE -> "记录个人（男性）活动，高潮按次数记录。"
-                                SessionMode.SOLO_FEMALE -> "记录个人（女性）活动，支持多次高潮计数与女性向建议。"
-                                SessionMode.PAIR -> "记录双人性生活，可填写对方性别、昵称、高潮次数与避孕措施等。"
-                            },
+                            icon = filterIcon(filter),
+                            title = filter.label,
+                            subtitle = filter.description,
                             selected = isSelected,
-                            onClick = { selected = mode },
+                            onClick = {
+                                selection = when {
+                                    filter == HistoryQuickFilter.ALL ->
+                                        setOf(HistoryQuickFilter.ALL)
+
+                                    isSelected ->
+                                        (selection - filter)
+                                            .ifEmpty { setOf(HistoryQuickFilter.ALL) }
+
+                                    else ->
+                                        (selection - HistoryQuickFilter.ALL) + filter
+                                }
+                            },
                             trailingContent = {
-                                RadioButton(selected = isSelected, onClick = null)
+                                Checkbox(checked = isSelected, onCheckedChange = null)
                             }
                         )
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -98,14 +103,27 @@ fun RecordModePickerBottomSheet(
                     Text("取消")
                 }
                 Button(
-                    onClick = { onConfirm(selected) },
+                    onClick = {
+                        onConfirm(selection)
+                        onDismiss()
+                    },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.large
                 ) {
                     Text("确定")
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
+
+private fun filterIcon(filter: HistoryQuickFilter): ImageVector =
+    when (filter) {
+        HistoryQuickFilter.ALL -> Icons.Outlined.SelectAll
+        HistoryQuickFilter.CLIMAX -> Icons.Outlined.Favorite
+        HistoryQuickFilter.NO_CLIMAX -> Icons.Outlined.FavoriteBorder
+        HistoryQuickFilter.MODE_SOLO_MALE -> Icons.Outlined.Male
+        HistoryQuickFilter.MODE_SOLO_FEMALE -> Icons.Outlined.Female
+        HistoryQuickFilter.MODE_PAIR -> Icons.Outlined.Group
+    }
