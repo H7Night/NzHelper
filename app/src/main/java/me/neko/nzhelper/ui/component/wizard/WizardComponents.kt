@@ -113,9 +113,9 @@ fun OptionCard(
 }
 
 @Composable
-fun SummaryRow(label: String, value: String) {
+fun SummaryRow(label: String, value: String, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -7,7 +7,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -16,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -31,8 +31,11 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.ArrowDropUp
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.Celebration
@@ -45,21 +48,17 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Male
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenu
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -74,7 +73,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -86,7 +84,10 @@ import me.neko.nzhelper.core.datastore.AgeGroupSettings
 import me.neko.nzhelper.core.datastore.RecordModeSettings
 import me.neko.nzhelper.core.datastore.ThemeSettings
 import me.neko.nzhelper.core.model.SessionMode
-import me.neko.nzhelper.ui.component.wizard.OptionCard
+import me.neko.nzhelper.ui.component.setting.LocalSettingsItemCorners
+import me.neko.nzhelper.ui.component.setting.SettingsCard
+import me.neko.nzhelper.ui.component.setting.SettingsItem
+import me.neko.nzhelper.ui.component.setting.SettingsItemSurface
 import me.neko.nzhelper.ui.component.wizard.PageHeader
 import me.neko.nzhelper.ui.component.wizard.SummaryRow
 import me.neko.nzhelper.ui.theme.LocalThemeState
@@ -239,32 +240,37 @@ private fun ModePage(context: Context) {
         subtitle = "新建记录时默认选中的模式，可在记录表单里随时切换。"
     )
     Spacer(Modifier.height(20.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SettingsCard {
         SessionMode.entries.forEach { mode ->
-            OptionCard(
-                icon = when (mode) {
-                    SessionMode.SOLO_MALE -> Icons.Outlined.Male
-                    SessionMode.SOLO_FEMALE -> Icons.Outlined.Female
-                    SessionMode.PAIR -> Icons.Outlined.FavoriteBorder
-                },
-                title = mode.label,
-                subtitle = when (mode) {
-                    SessionMode.SOLO_MALE -> "个人记录"
-                    SessionMode.SOLO_FEMALE -> "个人记录"
-                    SessionMode.PAIR -> "双人记录，与伴侣"
-                },
-                selected = selected == mode,
-                onClick = {
-                    selected = mode
-                    RecordModeSettings.setDefaultMode(context, mode)
-                }
-            )
+            val isSelected = selected == mode
+            item {
+                SettingsItem(
+                    icon = when (mode) {
+                        SessionMode.SOLO_MALE -> Icons.Outlined.Male
+                        SessionMode.SOLO_FEMALE -> Icons.Outlined.Female
+                        SessionMode.PAIR -> Icons.Outlined.FavoriteBorder
+                    },
+                    title = mode.label,
+                    subtitle = when (mode) {
+                        SessionMode.SOLO_MALE -> "个人记录"
+                        SessionMode.SOLO_FEMALE -> "个人记录"
+                        SessionMode.PAIR -> "双人记录，与伴侣"
+                    },
+                    selected = isSelected,
+                    onClick = {
+                        selected = mode
+                        RecordModeSettings.setDefaultMode(context, mode)
+                    },
+                    trailingContent = {
+                        RadioButton(selected = isSelected, onClick = null)
+                    }
+                )
+            }
         }
     }
 }
 
 // 出生日期
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BirthDatePage(context: Context) {
     val today = LocalDate.now()
@@ -300,41 +306,61 @@ private fun BirthDatePage(context: Context) {
         subtitle = "用于年龄相关统计，仅保存在本地。"
     )
     Spacer(Modifier.height(24.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        DropdownSelector(
-            label = "年",
-            value = "${selectedYear}年",
-            options = yearOptions,
-            onSelect = { index -> selectedYear = maxYear - index },
-            modifier = Modifier.weight(1.3f)
-        )
-        DropdownSelector(
-            label = "月",
-            value = "${selectedMonth}月",
-            options = monthOptions,
-            onSelect = { index -> selectedMonth = index + 1 },
-            modifier = Modifier.weight(1f)
-        )
-        DropdownSelector(
-            label = "日",
-            value = "${effectiveDay}日",
-            options = dayOptions,
-            onSelect = { index -> selectedDay = index + 1 },
-            modifier = Modifier.weight(1f)
-        )
+    SettingsCard {
+        item {
+            SettingsItemSurface {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Today,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "${selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}（$age 岁）",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
     Spacer(Modifier.height(16.dp))
-    Text(
-        text = "${selectedDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))}（$age 岁）",
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary
-    )
+    SettingsCard {
+        item {
+            DropdownSelector(
+                label = "年",
+                value = "${selectedYear}年",
+                options = yearOptions,
+                onSelect = { index -> selectedYear = maxYear - index }
+            )
+        }
+        item {
+            DropdownSelector(
+                label = "月",
+                value = "${selectedMonth}月",
+                options = monthOptions,
+                onSelect = { index -> selectedMonth = index + 1 }
+            )
+        }
+        item {
+            DropdownSelector(
+                label = "日",
+                value = "${effectiveDay}日",
+                options = dayOptions,
+                onSelect = { index -> selectedDay = index + 1 }
+            )
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownSelector(
     label: String,
@@ -344,25 +370,49 @@ private fun DropdownSelector(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            label = { Text(label) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+    val corners = LocalSettingsItemCorners.current
+    BoxWithConstraints(modifier = modifier) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-        )
-        ExposedDropdownMenu(
+                .clip(
+                    RoundedCornerShape(
+                        topStart = corners.topRadius,
+                        topEnd = corners.topRadius,
+                        bottomEnd = corners.bottomRadius,
+                        bottomStart = corners.bottomRadius
+                    )
+                )
+                .background(MaterialTheme.colorScheme.surfaceBright)
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Icon(
+                imageVector = if (expanded) Icons.Outlined.ArrowDropUp else Icons.Outlined.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.width(maxWidth)
         ) {
             options.forEachIndexed { index, option ->
                 DropdownMenuItem(
@@ -390,84 +440,123 @@ private fun ThemePage(context: Context) {
         subtitle = "选择你喜欢的主题色及主题模式，切换立即生效，之后可随时调整。"
     )
     Spacer(Modifier.height(20.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SettingsCard {
         ThemeSettings.ThemeMode.entries.forEach { mode ->
-            OptionCard(
-                icon = when (mode) {
-                    ThemeSettings.ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto
-                    ThemeSettings.ThemeMode.LIGHT -> Icons.Outlined.LightMode
-                    ThemeSettings.ThemeMode.DARK -> Icons.Outlined.DarkMode
-                },
-                title = mode.label,
-                subtitle = when (mode) {
-                    ThemeSettings.ThemeMode.SYSTEM -> "随系统自动切换明暗"
-                    ThemeSettings.ThemeMode.LIGHT -> "始终使用浅色外观"
-                    ThemeSettings.ThemeMode.DARK -> "始终使用深色外观"
-                },
-                selected = themeState.themeMode == mode,
-                onClick = {
-                    themeState.themeMode = mode
-                    ThemeSettings.setThemeMode(context, mode)
-                }
-            )
+            val isSelected = themeState.themeMode == mode
+            item {
+                SettingsItem(
+                    icon = when (mode) {
+                        ThemeSettings.ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto
+                        ThemeSettings.ThemeMode.LIGHT -> Icons.Outlined.LightMode
+                        ThemeSettings.ThemeMode.DARK -> Icons.Outlined.DarkMode
+                    },
+                    title = mode.label,
+                    subtitle = when (mode) {
+                        ThemeSettings.ThemeMode.SYSTEM -> "随系统自动切换明暗"
+                        ThemeSettings.ThemeMode.LIGHT -> "始终使用浅色外观"
+                        ThemeSettings.ThemeMode.DARK -> "始终使用深色外观"
+                    },
+                    selected = isSelected,
+                    onClick = {
+                        themeState.themeMode = mode
+                        ThemeSettings.setThemeMode(context, mode)
+                    },
+                    trailingContent = {
+                        RadioButton(selected = isSelected, onClick = null)
+                    }
+                )
+            }
         }
     }
     Spacer(Modifier.height(16.dp))
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceBright
-        )
-    ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            ToggleRow(
+    SettingsCard {
+        item {
+            SettingsItem(
+                icon = Icons.Outlined.DarkMode,
                 title = "AMOLED 纯黑",
                 subtitle = if (darkSelected) "深色模式下使用纯黑背景，更省电" else "仅深色模式可用",
-                checked = themeState.amoledDark,
                 enabled = darkSelected,
-                onCheckedChange = { enabled ->
-                    themeState.amoledDark = enabled
-                    ThemeSettings.setAmoledDark(context, enabled)
+                onClick = {
+                    if (darkSelected) {
+                        themeState.amoledDark = !themeState.amoledDark
+                        ThemeSettings.setAmoledDark(context, themeState.amoledDark)
+                    }
+                },
+                trailingContent = {
+                    Switch(
+                        checked = themeState.amoledDark,
+                        enabled = darkSelected,
+                        onCheckedChange = { enabled ->
+                            themeState.amoledDark = enabled
+                            ThemeSettings.setAmoledDark(context, enabled)
+                        }
+                    )
                 }
             )
-            ToggleRow(
+        }
+        item {
+            SettingsItem(
+                icon = Icons.Outlined.Palette,
                 title = "动态取色",
                 subtitle = "跟随壁纸取色（Android 12+）",
-                checked = themeState.dynamicColor,
-                onCheckedChange = { enabled ->
-                    themeState.dynamicColor = enabled
-                    ThemeSettings.setDynamicColor(context, enabled)
+                onClick = {
+                    themeState.dynamicColor = !themeState.dynamicColor
+                    ThemeSettings.setDynamicColor(context, themeState.dynamicColor)
+                },
+                trailingContent = {
+                    Switch(
+                        checked = themeState.dynamicColor,
+                        onCheckedChange = { enabled ->
+                            themeState.dynamicColor = enabled
+                            ThemeSettings.setDynamicColor(context, enabled)
+                        }
+                    )
                 }
             )
-            AnimatedVisibility(visible = !themeState.dynamicColor) {
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 12.dp)
-                ) {
-                    Text(
-                        text = "主题色",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ThemeColorOptions.forEachIndexed { index, option ->
-                            ColorDot(
-                                color = option.seed,
-                                selected = index == themeState.themeColorIndex,
-                                onClick = {
-                                    themeState.themeColorIndex = index
-                                    ThemeSettings.setThemeColorIndex(context, index)
-                                }
-                            )
-                        }
+        }
+        if (!themeState.dynamicColor) {
+            item {
+                ThemeColorPickerSlot(
+                    selectedIndex = themeState.themeColorIndex,
+                    onSelect = { index ->
+                        themeState.themeColorIndex = index
+                        ThemeSettings.setThemeColorIndex(context, index)
                     }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ThemeColorPickerSlot(
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit
+) {
+    SettingsItemSurface {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(vertical = 12.dp)
+        ) {
+            Text(
+                text = "主题色",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ThemeColorOptions.forEachIndexed { index, option ->
+                    ColorDot(
+                        color = option.seed,
+                        selected = index == selectedIndex,
+                        onClick = { onSelect(index) }
+                    )
                 }
             }
         }
@@ -503,45 +592,6 @@ private fun ColorDot(
     }
 }
 
-@Composable
-private fun ToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else 0.38f)
-            .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled
-        )
-    }
-}
-
 // 通知权限
 @Composable
 private fun NotificationPage(context: Context) {
@@ -570,33 +620,35 @@ private fun NotificationPage(context: Context) {
         subtitle = "计时期间需要在通知栏显示状态，后台计时才能稳定运行。\n建议开启，之后也可在系统设置中关闭。"
     )
     Spacer(Modifier.height(20.dp))
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = if (granted) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceBright
+    SettingsCard {
+        item {
+            SettingsItemSurface(
+                containerColor = if (granted) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceBright
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = if (granted) Icons.Outlined.CheckCircle else Icons.Outlined.Notifications,
+                        contentDescription = null,
+                        tint = if (granted) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (granted) "通知权限已开启" else "通知权限未开启",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = if (granted) Icons.Outlined.CheckCircle else Icons.Outlined.Notifications,
-                contentDescription = null,
-                tint = if (granted) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = if (granted) "通知权限已开启" else "通知权限未开启",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
         }
     }
     Spacer(Modifier.height(16.dp))
@@ -633,31 +685,46 @@ private fun DonePage(context: Context) {
         subtitle = "一切就绪，开始记录吧！以下偏好都可以在设置中修改。"
     )
     Spacer(Modifier.height(20.dp))
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceBright
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SummaryRow("记录模式", RecordModeSettings.getDefaultMode(context).label)
-            SummaryRow(
-                "年龄",
-                if (AgeGroupSettings.isBirthDateSet(context)) {
-                    "${AgeGroupSettings.getAge(context)} 岁"
-                } else "未设置"
-            )
-            SummaryRow("主题", ThemeSettings.getThemeMode(context).label)
-            SummaryRow(
-                "通知",
-                if (NotificationManagerCompat.from(context)
-                        .areNotificationsEnabled()
-                ) "已开启" else "未开启"
-            )
+    SettingsCard {
+        item {
+            SettingsItemSurface {
+                SummaryRow(
+                    label = "记录模式",
+                    value = RecordModeSettings.getDefaultMode(context).label,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+        }
+        item {
+            SettingsItemSurface {
+                SummaryRow(
+                    label = "年龄",
+                    value = if (AgeGroupSettings.isBirthDateSet(context)) {
+                        "${AgeGroupSettings.getAge(context)} 岁"
+                    } else "未设置",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+        }
+        item {
+            SettingsItemSurface {
+                SummaryRow(
+                    label = "主题",
+                    value = ThemeSettings.getThemeMode(context).label,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+        }
+        item {
+            SettingsItemSurface {
+                SummaryRow(
+                    label = "通知",
+                    value = if (NotificationManagerCompat.from(context)
+                            .areNotificationsEnabled()
+                    ) "已开启" else "未开启",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
         }
     }
 }

@@ -68,7 +68,6 @@ import me.neko.nzhelper.core.ai.AiProvider
 import me.neko.nzhelper.core.ai.AiSettings
 import me.neko.nzhelper.core.model.SessionMode
 import me.neko.nzhelper.ui.component.setting.SettingsCard
-import me.neko.nzhelper.ui.component.setting.SettingsDivider
 import me.neko.nzhelper.ui.component.setting.SettingsItem
 
 private val TONES = listOf(
@@ -179,113 +178,128 @@ fun AiConfigScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Rounded.SmartToy,
-                        title = "启用 AI 分析",
-                        subtitle = if (hasProvider) "AI 根据记录生成个性化健康建议"
-                        else "请先添加供应商",
-                        enabled = hasProvider,
-                        onClick = { if (hasProvider) toggleEnabled(!enabled) },
-                        trailingContent = {
-                            Switch(
-                                checked = enabled && hasProvider,
-                                onCheckedChange = { if (hasProvider) toggleEnabled(it) },
-                                enabled = hasProvider
-                            )
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Dns,
-                        title = "管理供应商",
-                        subtitle = if (active != null) "${active.model} · ${providers.size} 个供应商"
-                        else if (providers.isNotEmpty()) "${providers.size} 个供应商 · 未激活"
-                        else "尚未添加",
-                        onClick = onProviders
-                    )
+                SettingsCard(title = "AI 配置") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Rounded.SmartToy,
+                            title = "启用 AI 分析",
+                            subtitle = if (hasProvider) "AI 根据记录生成个性化健康建议"
+                            else "请先添加供应商",
+                            enabled = hasProvider,
+                            onClick = { if (hasProvider) toggleEnabled(!enabled) },
+                            trailingContent = {
+                                Switch(
+                                    checked = enabled && hasProvider,
+                                    onCheckedChange = { if (hasProvider) toggleEnabled(it) },
+                                    enabled = hasProvider
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Dns,
+                            title = "管理供应商",
+                            subtitle = if (active != null) "${active.model} · ${providers.size} 个供应商"
+                            else if (providers.isNotEmpty()) "${providers.size} 个供应商 · 未激活"
+                            else "尚未添加",
+                            onClick = onProviders
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Refresh,
-                        title = "自动刷新 AI 建议",
-                        subtitle = "按间隔或新增记录后自动请求 AI\n${
-                            REFRESH_INTERVALS.firstOrNull { it.first == refreshInterval }?.second
-                                ?: "仅手动"
-                        }",
-                        enabled = hasProvider,
-                        onClick = { showRefreshDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Transgender,
-                        title = "AI 建议倾向",
-                        subtitle = AI_MODES.firstOrNull { it.first == aiMode }?.second ?: aiMode,
-                        enabled = hasProvider,
-                        onClick = { showAiModeDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Token,
-                        title = "Max Tokens",
-                        subtitle = "$maxTokens（推理模型建议 1000+）",
-                        enabled = hasProvider,
-                        onClick = { showMaxTokensDialog = true }
-                    )
+                SettingsCard(title = "生成设置") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Refresh,
+                            title = "自动刷新 AI 建议",
+                            subtitle = "按间隔或新增记录后自动请求 AI\n${
+                                REFRESH_INTERVALS.firstOrNull { it.first == refreshInterval }?.second
+                                    ?: "仅手动"
+                            }",
+                            enabled = hasProvider,
+                            onClick = { showRefreshDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Transgender,
+                            title = "AI 建议倾向",
+                            subtitle = AI_MODES.firstOrNull { it.first == aiMode }?.second
+                                ?: aiMode,
+                            enabled = hasProvider,
+                            onClick = { showAiModeDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Token,
+                            title = "Max Tokens",
+                            subtitle = "$maxTokens（推理模型建议 1000+）",
+                            enabled = hasProvider,
+                            onClick = { showMaxTokensDialog = true }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.DataArray,
-                        title = "分析数据",
-                        subtitle = "选择发送给 AI 分析的数据\n已选 ${dataOpts.fields.size} 项 · ${
-                            ANALYSIS_RANGES.firstOrNull { it.first == analysisDays }?.second ?: "最近7天"
-                        }",
-                        enabled = hasProvider,
-                        onClick = { showDataDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.History,
-                        title = "时间范围",
-                        subtitle = ANALYSIS_RANGES.firstOrNull { it.first == analysisDays }?.second
-                            ?: "最近 7 天",
-                        enabled = hasProvider,
-                        onClick = { showAnalysisDaysDialog = true }
-                    )
+                SettingsCard(title = "数据范围") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.DataArray,
+                            title = "分析数据",
+                            subtitle = "选择发送给 AI 分析的数据\n已选 ${dataOpts.fields.size} 项 · ${
+                                ANALYSIS_RANGES.firstOrNull { it.first == analysisDays }?.second ?: "最近7天"
+                            }",
+                            enabled = hasProvider,
+                            onClick = { showDataDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.History,
+                            title = "时间范围",
+                            subtitle = ANALYSIS_RANGES.firstOrNull { it.first == analysisDays }?.second
+                                ?: "最近 7 天",
+                            enabled = hasProvider,
+                            onClick = { showAnalysisDaysDialog = true }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Tune,
-                        title = "回答口吻",
-                        subtitle = TONES.firstOrNull { it.first == tone }?.second ?: tone,
-                        enabled = hasProvider,
-                        onClick = { showToneDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Tune,
-                        title = "回答长度",
-                        subtitle = LENGTHS.firstOrNull { it.first == length }?.second ?: length,
-                        enabled = hasProvider,
-                        onClick = { showLengthDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.AutoAwesome,
-                        title = "自定义要求",
-                        subtitle = custom.ifBlank { "未设置" },
-                        enabled = hasProvider,
-                        onClick = { showCustomDialog = true }
-                    )
+                SettingsCard(title = "输出风格") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Tune,
+                            title = "回答口吻",
+                            subtitle = TONES.firstOrNull { it.first == tone }?.second ?: tone,
+                            enabled = hasProvider,
+                            onClick = { showToneDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Tune,
+                            title = "回答长度",
+                            subtitle = LENGTHS.firstOrNull { it.first == length }?.second ?: length,
+                            enabled = hasProvider,
+                            onClick = { showLengthDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.AutoAwesome,
+                            title = "自定义要求",
+                            subtitle = custom.ifBlank { "未设置" },
+                            enabled = hasProvider,
+                            onClick = { showCustomDialog = true }
+                        )
+                    }
                 }
             }
         }

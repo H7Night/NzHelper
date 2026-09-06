@@ -3,11 +3,15 @@ package me.neko.nzhelper.feature.about
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,11 +52,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -60,9 +69,11 @@ import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import me.neko.nzhelper.R
+import me.neko.nzhelper.ui.component.setting.LocalSettingsItemCorners
 import me.neko.nzhelper.ui.component.setting.SettingsCard
-import me.neko.nzhelper.ui.component.setting.SettingsDivider
+import me.neko.nzhelper.ui.component.setting.SettingsCornerRadius
 import me.neko.nzhelper.ui.component.setting.TrailingArrowIcon
+import me.neko.nzhelper.ui.theme.LocalDarkMode
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -153,60 +164,67 @@ fun AboutScreen(
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        painter = painterResource(id = R.drawable.code_24px),
-                        title = "GitHub 仓库",
-                        subtitle = "我要好多好多小星星✨~",
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                "https://github.com/bug-bit/NzHelper".toUri()
-                            )
-                            context.startActivity(intent)
-                        }
-                    )
+                SettingsCard(title = "项目") {
+                    item {
+                        SettingsItem(
+                            painter = painterResource(id = R.drawable.code_24px),
+                            title = "GitHub 仓库",
+                            subtitle = "我要好多好多小星星✨~",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://github.com/bug-bit/NzHelper".toUri()
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        painter = painterResource(id = R.drawable.ic_telegram),
-                        title = "Telegram CI 构建频道",
-                        subtitle = "获取最新测试版",
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                "https://t.me/NzzHelper".toUri()
-                            )
-                            context.startActivity(intent)
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        painter = painterResource(id = R.drawable.ic_telegram),
-                        title = "Telegram 群组",
-                        subtitle = "@NzHelper",
-                        onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                "https://t.me/NzHelper".toUri()
-                            )
-                            context.startActivity(intent)
-                        }
-                    )
+                SettingsCard(title = "社区") {
+                    item {
+                        SettingsItem(
+                            painter = painterResource(id = R.drawable.ic_telegram),
+                            title = "Telegram CI 构建频道",
+                            subtitle = "获取最新测试版",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://t.me/NzzHelper".toUri()
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            painter = painterResource(id = R.drawable.ic_telegram),
+                            title = "Telegram 群组",
+                            subtitle = "@NzHelper",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://t.me/NzHelper".toUri()
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        painter = painterResource(id = R.drawable.source_code_24px),
-                        title = "开放源代码",
-                        subtitle = "查看第三方开源声明",
-                        onClick = { navController.navigate("open_source") }
-                    )
+                SettingsCard(title = "许可证") {
+                    item {
+                        SettingsItem(
+                            painter = painterResource(id = R.drawable.source_code_24px),
+                            title = "开放源代码",
+                            subtitle = "查看第三方开源声明",
+                            onClick = { navController.navigate("open_source") }
+                        )
+                    }
                 }
             }
         }
@@ -225,30 +243,57 @@ private fun SettingsItem(
     enabled: Boolean = true,
     trailingContent: @Composable (() -> Unit)? = null
 ) {
-    val contentAlpha = if (enabled) 1f else 0.5f
+    val haptic = LocalHapticFeedback.current
+    val contentAlpha = if (enabled) 1f else 0.38f
+    val dynamicInternalPadding = (6 * LocalDensity.current.fontScale).dp
+    val corners = LocalSettingsItemCorners.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val topRadius by animateDpAsState(
+        targetValue = if (pressed) SettingsCornerRadius else corners.topRadius,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "settingsItemTopRadius"
+    )
+    val bottomRadius by animateDpAsState(
+        targetValue = if (pressed) SettingsCornerRadius else corners.bottomRadius,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "settingsItemBottomRadius"
+    )
+    val shape = RoundedCornerShape(
+        topStart = topRadius,
+        topEnd = topRadius,
+        bottomEnd = bottomRadius,
+        bottomStart = bottomRadius
+    )
     ListItem(
         modifier = modifier
             .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(
                 enabled = enabled,
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = LocalIndication.current,
-                onClick = onClick
-            )
-            .padding(vertical = 8.dp),
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                    onClick()
+                }
+            ),
+        verticalAlignment = Alignment.CenterVertically,
         leadingContent = {
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                modifier = Modifier.size(28.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painter,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    tint = if (LocalDarkMode.current) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                    },
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
@@ -265,17 +310,27 @@ private fun SettingsItem(
         elevation = ListItemDefaults.elevation(),
         content = {
             Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = titleColor.copy(alpha = contentAlpha)
-                )
+                Box(
+                    modifier = Modifier.padding(
+                        top = dynamicInternalPadding,
+                        bottom = if (subtitle == null) dynamicInternalPadding else 0.dp
+                    )
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = titleColor.copy(alpha = contentAlpha)
+                    )
+                }
                 subtitle?.let {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = subtitleColor.copy(alpha = contentAlpha)
+                        color = subtitleColor.copy(alpha = contentAlpha),
+                        modifier = Modifier.padding(bottom = dynamicInternalPadding)
                     )
                 }
             }

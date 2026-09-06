@@ -111,53 +111,59 @@ fun RecycleBinSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Delete,
-                        title = "回收站记录",
-                        subtitle = if (recycleBinCount > 0) "共 $recycleBinCount 条记录，点击管理"
-                        else "暂无已删除的记录",
-                        onClick = {
-                            onNavigateToRecycleBin()
-                        },
-                        badgeText = if (recycleBinCount > 0) "$recycleBinCount" else null
-                    )
+                SettingsCard(title = "回收站") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Delete,
+                            title = "回收站记录",
+                            subtitle = if (recycleBinCount > 0) "共 $recycleBinCount 条记录，点击管理"
+                            else "暂无已删除的记录",
+                            onClick = {
+                                onNavigateToRecycleBin()
+                            },
+                            badgeText = if (recycleBinCount > 0) "$recycleBinCount" else null
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.AutoDelete,
-                        title = "自动清理回收站",
-                        subtitle = if (autoCleanEnabled) "已开启，记录将在 30 天后自动永久删除"
-                        else "已关闭，记录将一直保留在回收站中",
-                        onClick = {
-                            autoCleanEnabled = !autoCleanEnabled
-                            RecycleBinSettings.setAutoCleanEnabled(context, autoCleanEnabled)
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = autoCleanEnabled,
-                                onCheckedChange = { enabled ->
-                                    autoCleanEnabled = enabled
-                                    RecycleBinSettings.setAutoCleanEnabled(context, enabled)
-                                }
-                            )
-                        }
-                    )
+                SettingsCard(title = "清理") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.AutoDelete,
+                            title = "自动清理回收站",
+                            subtitle = if (autoCleanEnabled) "已开启，记录将在 30 天后自动永久删除"
+                            else "已关闭，记录将一直保留在回收站中",
+                            onClick = {
+                                autoCleanEnabled = !autoCleanEnabled
+                                RecycleBinSettings.setAutoCleanEnabled(context, autoCleanEnabled)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = autoCleanEnabled,
+                                    onCheckedChange = { enabled ->
+                                        autoCleanEnabled = enabled
+                                        RecycleBinSettings.setAutoCleanEnabled(context, enabled)
+                                    }
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.DeleteSweep,
-                        title = "移入回收站",
-                        subtitle = "将所有记录移入回收站，可从回收站恢复",
-                        titleColor = MaterialTheme.colorScheme.error,
-                        onClick = { showClearDialog = true }
-                    )
+                SettingsCard(title = "操作") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.DeleteSweep,
+                            title = "移入回收站",
+                            subtitle = "将所有记录移入回收站，可从回收站恢复",
+                            titleColor = MaterialTheme.colorScheme.error,
+                            onClick = { showClearDialog = true }
+                        )
+                    }
                 }
             }
         }

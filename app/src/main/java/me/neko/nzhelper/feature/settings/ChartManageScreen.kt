@@ -1,12 +1,6 @@
 package me.neko.nzhelper.feature.settings
 
-import android.annotation.SuppressLint
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +14,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -48,13 +41,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.neko.nzhelper.core.datastore.ChartVisibilitySettings
 import me.neko.nzhelper.ui.component.ReorderableColumn
+import me.neko.nzhelper.ui.component.setting.SettingsCard
+import me.neko.nzhelper.ui.component.setting.SettingsItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -148,97 +142,38 @@ fun ChartManageScreen(
                     }
                 }
             }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceBright
-                )
-            ) {
-                Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    ReorderableColumn(
-                        items = orderedCharts,
-                        keyOf = { it.key },
-                        onReorder = { newOrder -> orderedCharts = newOrder },
-                        onCommit = { ChartVisibilitySettings.saveOrder(context, orderedCharts) }
-                    ) { chart, dragHandle, _ ->
-                        ChartItemRow(
-                            chart = chart,
-                            isVisible = visibilityStates[chart] ?: chart.defaultVisible,
-                            dragHandle = dragHandle,
-                            onToggle = { checked ->
+            ReorderableColumn(
+                items = orderedCharts,
+                keyOf = { it.key },
+                onReorder = { newOrder -> orderedCharts = newOrder },
+                onCommit = { ChartVisibilitySettings.saveOrder(context, orderedCharts) },
+                gap = 4.dp
+            ) { chart, dragHandle, _ ->
+                SettingsCard {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Filled.DragHandle,
+                            leadingModifier = dragHandle,
+                            title = chart.label,
+                            subtitle = chart.description,
+                            onClick = {
+                                val checked = !(visibilityStates[chart] ?: chart.defaultVisible)
                                 visibilityStates[chart] = checked
                                 ChartVisibilitySettings.setVisible(context, chart, checked)
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                            trailingContent = {
+                                Switch(
+                                    checked = visibilityStates[chart] ?: chart.defaultVisible,
+                                    onCheckedChange = { checked ->
+                                        visibilityStates[chart] = checked
+                                        ChartVisibilitySettings.setVisible(context, chart, checked)
+                                    }
+                                )
+                            }
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@SuppressLint("ModifierParameter")
-@Composable
-private fun ChartItemRow(
-    chart: ChartVisibilitySettings.Chart,
-    isVisible: Boolean,
-    dragHandle: Modifier,
-    onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceBright)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = LocalIndication.current,
-                    onClick = { onToggle(!isVisible) }
-                )
-                .padding(end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .then(dragHandle)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DragHandle,
-                    contentDescription = "拖动排序",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = chart.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = chart.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Switch(
-                checked = isVisible,
-                onCheckedChange = onToggle
-            )
         }
     }
 }

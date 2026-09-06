@@ -81,7 +81,6 @@ import me.neko.nzhelper.core.model.BackupModules
 import me.neko.nzhelper.core.security.BackupCipher
 import me.neko.nzhelper.core.webdav.WebDavSettings
 import me.neko.nzhelper.ui.component.setting.SettingsCard
-import me.neko.nzhelper.ui.component.setting.SettingsDivider
 import me.neko.nzhelper.ui.component.setting.SettingsItem
 import me.neko.nzhelper.ui.component.setting.TrailingArrowIcon
 import java.util.Locale
@@ -254,148 +253,158 @@ fun BackupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Key,
-                        title = "备份密码",
-                        subtitle = if (hasCustomBackupPassword) "已设置：换手机也能用相同密码恢复备份"
-                        else "未设置：备份只能在本机恢复，换手机/重装后打不开",
-                        onClick = { showBackupPasswordDialog = true }
-                    )
+                SettingsCard(title = "安全") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Key,
+                            title = "备份密码",
+                            subtitle = if (hasCustomBackupPassword) "已设置：换手机也能用相同密码恢复备份"
+                            else "未设置：备份只能在本机恢复，换手机/重装后打不开",
+                            onClick = { showBackupPasswordDialog = true }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Upload,
-                        title = "导出数据",
-                        subtitle = "将所选内容加密导出为备份文件，恢复时需输入密码验证",
-                        onClick = {
-                            scope.launch {
-                                exportCounts = loadLocalCounts()
-                                pendingExportModules = BackupModules.ALL
-                            }
-                        },
-                        trailingContent = { TrailingArrowIcon() }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Description,
-                        title = "导出文档",
-                        subtitle = "导出为 PDF / Word 报告，适合查看、打印或存档",
-                        onClick = {
-                            scope.launch {
-                                exportCounts = loadLocalCounts()
-                                showDocExportDialog = true
-                            }
-                        },
-                        enabled = !docExporting,
-                        trailingContent = {
-                            if (docExporting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                TrailingArrowIcon()
-                            }
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Download,
-                        title = "导入数据",
-                        subtitle = "从备份文件选择要恢复的内容",
-                        onClick = {
-                            importLauncher.launch(
-                                arrayOf(
-                                    "application/octet-stream",
-                                    "application/json",
-                                    "text/plain"
-                                )
-                            )
-                        },
-                        enabled = !importing,
-                        trailingContent = {
-                            if (importing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                TrailingArrowIcon()
-                            }
-                        }
-                    )
-                }
-            }
-
-            item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Cloud,
-                        title = "WebDAV 备份",
-                        subtitle = if (webDavConfigured) "已配置，点击修改" else "未配置，点击设置",
-                        onClick = { showWebDavDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.CloudUpload,
-                        title = "云端备份",
-                        subtitle = webDavBackupDateStr?.let { "上次备份：$it" }
-                            ?: "选择要备份的内容，加密导出并上传至 WebDAV 服务器，恢复时需凭密码解锁",
-                        onClick = {
-                            if (webDavConfigured && !webDavBackingUp) {
+                SettingsCard(title = "本地备份") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Upload,
+                            title = "导出数据",
+                            subtitle = "将所选内容加密导出为备份文件，恢复时需输入密码验证",
+                            onClick = {
                                 scope.launch {
                                     exportCounts = loadLocalCounts()
-                                    pendingWebDavBackupModules = BackupModules.ALL
+                                    pendingExportModules = BackupModules.ALL
+                                }
+                            },
+                            trailingContent = { TrailingArrowIcon() }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Description,
+                            title = "导出文档",
+                            subtitle = "导出为 PDF / Word 报告，适合查看、打印或存档",
+                            onClick = {
+                                scope.launch {
+                                    exportCounts = loadLocalCounts()
+                                    showDocExportDialog = true
+                                }
+                            },
+                            enabled = !docExporting,
+                            trailingContent = {
+                                if (docExporting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    TrailingArrowIcon()
                                 }
                             }
-                        },
-                        enabled = webDavConfigured && !webDavBackingUp,
-                        trailingContent = {
-                            if (webDavBackingUp) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Download,
+                            title = "导入数据",
+                            subtitle = "从备份文件选择要恢复的内容",
+                            onClick = {
+                                importLauncher.launch(
+                                    arrayOf(
+                                        "application/octet-stream",
+                                        "application/json",
+                                        "text/plain"
+                                    )
                                 )
-                            } else {
-                                TrailingArrowIcon()
+                            },
+                            enabled = !importing,
+                            trailingContent = {
+                                if (importing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    TrailingArrowIcon()
+                                }
                             }
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.CloudDownload,
-                        title = "云端恢复",
-                        subtitle = "从 WebDAV 选择内容恢复并合并到本地",
-                        onClick = {
-                            if (webDavConfigured && !webDavRestoring) {
-                                webDavRestoring = true
-                                scope.launch {
-                                    val (preview, msg) = BackupRepository.previewFromWebDav(context)
-                                    webDavRestoring = false
-                                    if (preview == null) {
-                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        pendingWebDavRestorePreview = preview
+                        )
+                    }
+                }
+            }
+
+            item {
+                SettingsCard(title = "云备份") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Cloud,
+                            title = "WebDAV 备份",
+                            subtitle = if (webDavConfigured) "已配置，点击修改" else "未配置，点击设置",
+                            onClick = { showWebDavDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.CloudUpload,
+                            title = "云端备份",
+                            subtitle = webDavBackupDateStr?.let { "上次备份：$it" }
+                                ?: "选择要备份的内容，加密导出并上传至 WebDAV 服务器，恢复时需凭密码解锁",
+                            onClick = {
+                                if (webDavConfigured && !webDavBackingUp) {
+                                    scope.launch {
+                                        exportCounts = loadLocalCounts()
+                                        pendingWebDavBackupModules = BackupModules.ALL
                                     }
                                 }
+                            },
+                            enabled = webDavConfigured && !webDavBackingUp,
+                            trailingContent = {
+                                if (webDavBackingUp) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    TrailingArrowIcon()
+                                }
                             }
-                        },
-                        enabled = webDavConfigured && !webDavRestoring,
-                        trailingContent = {
-                            if (webDavRestoring) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                TrailingArrowIcon()
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.CloudDownload,
+                            title = "云端恢复",
+                            subtitle = "从 WebDAV 选择内容恢复并合并到本地",
+                            onClick = {
+                                if (webDavConfigured && !webDavRestoring) {
+                                    webDavRestoring = true
+                                    scope.launch {
+                                        val (preview, msg) = BackupRepository.previewFromWebDav(context)
+                                        webDavRestoring = false
+                                        if (preview == null) {
+                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            pendingWebDavRestorePreview = preview
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = webDavConfigured && !webDavRestoring,
+                            trailingContent = {
+                                if (webDavRestoring) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    TrailingArrowIcon()
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }

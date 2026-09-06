@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.neko.nzhelper.core.model.TagDef
-import me.neko.nzhelper.ui.component.form.SectionCard
 import me.neko.nzhelper.ui.component.form.SectionLabel
 import me.neko.nzhelper.ui.theme.TagColors
 import me.neko.nzhelper.ui.theme.TagIcons
@@ -70,62 +69,60 @@ internal fun TagSelectCard(
     var showSheet by remember { mutableStateOf(false) }
     var tags by remember { mutableStateOf(loadTags()) }
 
-    SectionCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            SectionLabel(title)
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .clickable { showSheet = true },
+                contentAlignment = Alignment.Center
             ) {
-                SectionLabel(title)
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                        .clickable { showSheet = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
-                        contentDescription = "选择$title",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-            if (selectedIds.isEmpty()) {
-                Text(
-                    text = "未选择",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "选择$title",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
                 )
-            } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    tags.filter { it.id in selectedIds }.forEach { tag ->
-                        InputChip(
-                            selected = true,
-                            onClick = {},
-                            label = { Text(tag.name) },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Close,
-                                    contentDescription = "移除${tag.name}",
-                                    modifier = Modifier
-                                        .size(InputChipDefaults.IconSize)
-                                        .clip(CircleShape)
-                                        .clickable {
-                                            onSelectionChange(selectedIds - tag.id)
-                                        }
-                                )
-                            }
-                        )
-                    }
+            }
+        }
+        if (selectedIds.isEmpty()) {
+            Text(
+                text = "未选择",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                tags.filter { it.id in selectedIds }.forEach { tag ->
+                    InputChip(
+                        selected = true,
+                        onClick = {},
+                        label = { Text(tag.name) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "移除${tag.name}",
+                                modifier = Modifier
+                                    .size(InputChipDefaults.IconSize)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        onSelectionChange(selectedIds - tag.id)
+                                    }
+                            )
+                        }
+                    )
                 }
             }
         }

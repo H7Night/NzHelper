@@ -1,9 +1,8 @@
 package me.neko.nzhelper.ui.component.form
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -18,16 +17,23 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,45 +49,38 @@ import me.neko.nzhelper.core.model.Contraception
 import me.neko.nzhelper.core.model.PartnerGender
 import me.neko.nzhelper.core.model.SessionFormState
 import me.neko.nzhelper.core.model.SessionMode
+import me.neko.nzhelper.ui.component.setting.SettingsCard
+import me.neko.nzhelper.ui.component.setting.SettingsItemHost
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
 import kotlin.math.roundToInt
 
 @Composable
-fun SectionCard(
+fun SettingsSection(
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceBright
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                content = content
-            )
-        }
-    } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceBright
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                content = content
-            )
+    SettingsItemHost(modifier = modifier, onClick = onClick) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+fun SectionCard(
+    title: String? = null,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    SettingsCard(title = title) {
+        item {
+            SettingsSection(onClick = onClick, content = content)
         }
     }
 }
@@ -90,9 +89,8 @@ fun SectionCard(
 fun SectionLabel(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary
     )
 }
 
@@ -231,13 +229,12 @@ fun RatingSection(
         ) {
             Text(
                 "评分",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = "%.1f".format(rating),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
         }
@@ -254,6 +251,7 @@ fun RatingSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateTimeInputSection(
     formState: SessionFormState,
@@ -266,13 +264,10 @@ fun DateTimeInputSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionLabel("日期时间")
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = { showDatePicker = true },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -294,7 +289,7 @@ fun DateTimeInputSection(
 
             OutlinedButton(
                 onClick = { showTimePicker = true },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -314,56 +309,113 @@ fun DateTimeInputSection(
     }
 
     if (showDatePicker) {
-        DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                val selectedDate = LocalDate.of(year, month + 1, dayOfMonth)
-                if (selectedDate.isAfter(LocalDate.now())) {
-                    Toast.makeText(context, "不能选择未来的日期", Toast.LENGTH_SHORT).show()
-                } else {
-                    onFormStateChange(
-                        formState.copy(
-                            manualYear = year,
-                            manualMonth = month + 1,
-                            manualDay = dayOfMonth
-                        )
-                    )
+        val today = LocalDate.now()
+        val selectableDates = remember {
+            object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    val date =
+                        Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                    return !date.isAfter(today)
                 }
-                showDatePicker = false
+
+                override fun isSelectableYear(year: Int): Boolean = year <= today.year
+            }
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = LocalDate
+                .of(formState.manualYear, formState.manualMonth, formState.manualDay)
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli(),
+            selectableDates = selectableDates
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate =
+                                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                            if (selectedDate.isAfter(today)) {
+                                Toast.makeText(context, "不能选择未来的日期", Toast.LENGTH_SHORT)
+                                    .show()
+                            } else {
+                                onFormStateChange(
+                                    formState.copy(
+                                        manualYear = selectedDate.year,
+                                        manualMonth = selectedDate.monthValue,
+                                        manualDay = selectedDate.dayOfMonth
+                                    )
+                                )
+                            }
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("确定")
+                }
             },
-            formState.manualYear,
-            formState.manualMonth - 1,
-            formState.manualDay
-        ).apply {
-            setOnCancelListener { showDatePicker = false }
-        }.show()
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("取消")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     if (showTimePicker) {
-        TimePickerDialog(
-            context,
-            { _, hourOfDay, minute ->
-                val selectedDate =
-                    LocalDate.of(formState.manualYear, formState.manualMonth, formState.manualDay)
-                val selectedTime = LocalTime.of(hourOfDay, minute)
-
-                if (selectedDate.isEqual(LocalDate.now()) && selectedTime.isAfter(LocalTime.now())) {
-                    Toast.makeText(context, "不能选择未来的时间", Toast.LENGTH_SHORT).show()
-                } else {
-                    onFormStateChange(
-                        formState.copy(
-                            manualHour = hourOfDay,
-                            manualMinute = minute
-                        )
-                    )
+        val timePickerState = rememberTimePickerState(
+            initialHour = formState.manualHour,
+            initialMinute = formState.manualMinute,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("选择时间") },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TimePicker(state = timePickerState)
                 }
-                showTimePicker = false
             },
-            formState.manualHour,
-            formState.manualMinute,
-            true
-        ).apply {
-            setOnCancelListener { showTimePicker = false }
-        }.show()
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDate =
+                            LocalDate.of(
+                                formState.manualYear,
+                                formState.manualMonth,
+                                formState.manualDay
+                            )
+                        val selectedTime =
+                            LocalTime.of(timePickerState.hour, timePickerState.minute)
+
+                        if (selectedDate.isEqual(LocalDate.now()) && selectedTime.isAfter(LocalTime.now())) {
+                            Toast.makeText(context, "不能选择未来的时间", Toast.LENGTH_SHORT).show()
+                        } else {
+                            onFormStateChange(
+                                formState.copy(
+                                    manualHour = timePickerState.hour,
+                                    manualMinute = timePickerState.minute
+                                )
+                            )
+                        }
+                        showTimePicker = false
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }

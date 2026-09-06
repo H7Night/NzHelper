@@ -69,7 +69,6 @@ import me.neko.nzhelper.feature.lock.GestureLockManager
 import me.neko.nzhelper.feature.settings.components.AgePickerBottomSheet
 import me.neko.nzhelper.feature.settings.components.RecordModePickerBottomSheet
 import me.neko.nzhelper.ui.component.setting.SettingsCard
-import me.neko.nzhelper.ui.component.setting.SettingsDivider
 import me.neko.nzhelper.ui.component.setting.SettingsItem
 import java.time.LocalDate
 import java.time.Period
@@ -226,177 +225,199 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Lock,
-                        title = "应用锁",
-                        subtitle = "使用生物识别或锁屏密码解锁",
-                        onClick = { requestToggleLock(!lockEnabled) },
-                        trailingContent = {
-                            Switch(
-                                checked = lockEnabled,
-                                onCheckedChange = requestToggleLock
-                            )
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Gesture,
-                        title = "手势密码",
-                        subtitle = if (hasGesturePassword) "已开启，点击可设置" else "关闭，点击开启并设置",
-                        onClick = {
-                            rootNavController.navigate("gesture_lock")
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = hasGesturePassword,
-                                onCheckedChange = { targetState ->
-                                    if (targetState) {
-                                        rootNavController.navigate("gesture_lock")
-                                    } else {
-                                        GestureLockManager.clearGesturePassword(context)
-                                        hasGesturePassword = false
-                                        Toast.makeText(
-                                            context,
-                                            "已关闭并清除手势密码",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                SettingsCard(title = "安全") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Lock,
+                            title = "应用锁",
+                            subtitle = "使用生物识别或锁屏密码解锁",
+                            onClick = { requestToggleLock(!lockEnabled) },
+                            trailingContent = {
+                                Switch(
+                                    checked = lockEnabled,
+                                    onCheckedChange = requestToggleLock
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Gesture,
+                            title = "手势密码",
+                            subtitle = if (hasGesturePassword) "已开启，点击可设置" else "关闭，点击开启并设置",
+                            onClick = {
+                                rootNavController.navigate("gesture_lock")
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = hasGesturePassword,
+                                    onCheckedChange = { targetState ->
+                                        if (targetState) {
+                                            rootNavController.navigate("gesture_lock")
+                                        } else {
+                                            GestureLockManager.clearGesturePassword(context)
+                                            hasGesturePassword = false
+                                            Toast.makeText(
+                                                context,
+                                                "已关闭并清除手势密码",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     }
-                                }
-                            )
-                        }
-                    )
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Palette,
-                        title = "主题设置",
-                        subtitle = "外观模式 · 深色选项 · 动态取色",
-                        onClick = { rootNavController.navigate("theme_settings") }
-                    )
+                SettingsCard(title = "外观") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Palette,
+                            title = "主题设置",
+                            subtitle = "外观模式 · 深色选项 · 动态取色",
+                            onClick = { rootNavController.navigate("theme_settings") }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Cake,
-                        title = "年龄",
-                        subtitle = ageDisplay,
-                        onClick = { showAgeDialog = true }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Male,
-                        title = "记录模式",
-                        subtitle = "默认：${defaultMode.label}",
-                        onClick = { showModeDialog = true }
-                    )
+                SettingsCard(title = "个人信息") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Cake,
+                            title = "年龄",
+                            subtitle = ageDisplay,
+                            onClick = { showAgeDialog = true }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Male,
+                            title = "记录模式",
+                            subtitle = "默认：${defaultMode.label}",
+                            onClick = { showModeDialog = true }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Timer,
-                        title = "自动计时",
-                        subtitle = "进入首页时自动开始计时",
-                        onClick = { toggleAutoStart(!autoStartEnabled) },
-                        trailingContent = {
-                            Switch(
-                                checked = autoStartEnabled,
-                                onCheckedChange = toggleAutoStart
-                            )
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.AutoAwesome,
-                        title = "自动标签",
-                        subtitle = "按时间/星期自动打标签",
-                        onClick = { toggleAutoTag(!autoTagEnabled) },
-                        trailingContent = {
-                            Switch(
-                                checked = autoTagEnabled,
-                                onCheckedChange = toggleAutoTag
-                            )
-                        }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.SmartToy,
-                        title = "AI 健康建议",
-                        subtitle = aiSubtitle,
-                        onClick = { rootNavController.navigate("ai_config") }
-                    )
+                SettingsCard(title = "自动化") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Timer,
+                            title = "自动计时",
+                            subtitle = "进入首页时自动开始计时",
+                            onClick = { toggleAutoStart(!autoStartEnabled) },
+                            trailingContent = {
+                                Switch(
+                                    checked = autoStartEnabled,
+                                    onCheckedChange = toggleAutoStart
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.AutoAwesome,
+                            title = "自动标签",
+                            subtitle = "按时间/星期自动打标签",
+                            onClick = { toggleAutoTag(!autoTagEnabled) },
+                            trailingContent = {
+                                Switch(
+                                    checked = autoTagEnabled,
+                                    onCheckedChange = toggleAutoTag
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.SmartToy,
+                            title = "AI 健康建议",
+                            subtitle = aiSubtitle,
+                            onClick = { rootNavController.navigate("ai_config") }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Sell,
-                        title = "标签管理",
-                        subtitle = "分类 · 分组 · 标签（共 $tagCount 个标签）",
-                        onClick = { rootNavController.navigate("tag_manage") }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.CloudSync,
-                        title = "备份与恢复",
-                        subtitle = "导出 / 导入 / WebDAV 云备份",
-                        onClick = { rootNavController.navigate("backup") }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.AutoMirrored.Outlined.ViewQuilt,
-                        title = "统计卡片管理",
-                        subtitle = "自定义统计页展示哪些图表卡片",
-                        onClick = { rootNavController.navigate("chart_manage") }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.DeleteOutline,
-                        title = "回收站",
-                        subtitle = "管理已删除记录",
-                        onClick = { rootNavController.navigate("recycle_bin_settings") }
-                    )
+                SettingsCard(title = "数据管理") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Sell,
+                            title = "标签管理",
+                            subtitle = "分类 · 分组 · 标签（共 $tagCount 个标签）",
+                            onClick = { rootNavController.navigate("tag_manage") }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.CloudSync,
+                            title = "备份与恢复",
+                            subtitle = "导出 / 导入 / WebDAV 云备份",
+                            onClick = { rootNavController.navigate("backup") }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.AutoMirrored.Outlined.ViewQuilt,
+                            title = "统计卡片管理",
+                            subtitle = "自定义统计页展示哪些图表卡片",
+                            onClick = { rootNavController.navigate("chart_manage") }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.DeleteOutline,
+                            title = "回收站",
+                            subtitle = "管理已删除记录",
+                            onClick = { rootNavController.navigate("recycle_bin_settings") }
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.BugReport,
-                        title = "崩溃日志",
-                        subtitle = when {
-                            crashLogCount == 0 -> "暂无崩溃记录"
-                            unreadCrashCount > 0 -> "共 $crashLogCount 条，$unreadCrashCount 条未读"
-                            else -> "共 $crashLogCount 条记录"
-                        },
-                        onClick = { rootNavController.navigate("crash_logs") },
-                        badgeText = if (unreadCrashCount > 0) "$unreadCrashCount" else null
-                    )
+                SettingsCard(title = "诊断") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.BugReport,
+                            title = "崩溃日志",
+                            subtitle = when {
+                                crashLogCount == 0 -> "暂无崩溃记录"
+                                unreadCrashCount > 0 -> "共 $crashLogCount 条，$unreadCrashCount 条未读"
+                                else -> "共 $crashLogCount 条记录"
+                            },
+                            onClick = { rootNavController.navigate("crash_logs") },
+                            badgeText = if (unreadCrashCount > 0) "$unreadCrashCount" else null
+                        )
+                    }
                 }
             }
 
             item {
-                SettingsCard {
-                    SettingsItem(
-                        icon = Icons.Outlined.Favorite,
-                        title = "引导模式",
-                        subtitle = "回顾初次使用时的偏好设置流程",
-                        onClick = { rootNavController.navigate("onboarding") }
-                    )
-                    SettingsDivider()
-                    SettingsItem(
-                        icon = Icons.Outlined.Info,
-                        title = "关于",
-                        onClick = { rootNavController.navigate("about") }
-                    )
+                SettingsCard(title = "更多") {
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Favorite,
+                            title = "引导模式",
+                            subtitle = "回顾初次使用时的偏好设置流程",
+                            onClick = { rootNavController.navigate("onboarding") }
+                        )
+                    }
+                    item {
+                        SettingsItem(
+                            icon = Icons.Outlined.Info,
+                            title = "关于",
+                            onClick = { rootNavController.navigate("about") }
+                        )
+                    }
                 }
             }
         }
