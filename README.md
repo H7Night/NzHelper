@@ -94,6 +94,16 @@ cd NzHelper
 
 ---
 
+## 支持
+
+如果这个项目对你有帮助，欢迎通过爱发电支持开发者：
+
+👉 [https://afdian.com/a/zyfzd](https://afdian.com/a/zyfzd)
+
+你的支持是持续维护和更新的动力！
+
+---
+
 ## 许可协议
 
 本项目基于 GNU General Public License v3.0 开源。
